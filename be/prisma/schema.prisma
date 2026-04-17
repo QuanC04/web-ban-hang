@@ -1,0 +1,176 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+model User {
+  id           String    @id @default(cuid())
+  username     String    @unique
+  email        String    @unique
+  full_name    String?
+  avatar_url   String?
+  phone_number String?
+  password     String
+  role         String    @default("customer")
+  created_at   DateTime  @default(now())
+  addresses    Address[]
+  access_token String?
+  refresh_token String?
+  products     Product[]
+  cart         Cart?
+  orders       Order[]
+  coupons      Coupon[]
+
+  @@map("users")
+}
+
+model Address {
+  id         String   @id @default(cuid())
+  user_id    String
+  name       String
+  phone_number String
+  province   String
+  district   String
+  street     String
+  isdefault  Boolean  @default(false)
+  creat_at   DateTime @default(now())
+
+  user       User     @relation(fields: [user_id], references: [id])
+
+  @@map("address")
+}
+
+model Category {
+  id          String     @id @default(cuid())
+  name        String
+  description String?
+  parent_id   String?
+
+  parent      Category?  @relation("CategoryToSubcategory", fields: [parent_id], references: [id])
+  children    Category[] @relation("CategoryToSubcategory")
+  products    Product[]
+
+  @@map("categories")
+}
+
+model Product {
+  id             String         @id @default(cuid())
+  user_id        String
+  category_id    String
+  name           String
+  description    String?
+  image_url      String?
+  base_price     Int
+  stock_quantity Int            @default(0)
+  status         String         @default("active")
+  create_at      DateTime       @default(now())
+
+  user           User           @relation(fields: [user_id], references: [id])
+  category       Category       @relation(fields: [category_id], references: [id])
+  images         ProductImage[]
+  cart_items     CartItem[]
+  order_items    OrderItem[]
+
+  @@map("products")
+}
+
+model ProductImage {
+  id         String  @id @default(cuid())
+  product_id String
+  image_url  String
+
+  product    Product @relation(fields: [product_id], references: [id])
+
+  @@map("product_images")
+}
+
+model Cart {
+  id           String     @id @default(cuid())
+  user_id      String     @unique
+  total_amount Int        @default(0)
+
+  user         User       @relation(fields: [user_id], references: [id])
+  items        CartItem[]
+
+  @@map("cart")
+}
+
+model CartItem {
+  id         String  @id @default(cuid())
+  cart_id    String
+  product_id String
+  quantity   Int
+
+  cart       Cart    @relation(fields: [cart_id], references: [id])
+  product    Product @relation(fields: [product_id], references: [id])
+
+  @@map("cart_items")
+}
+
+model Order {
+  id                   String      @id @default(cuid())
+  user_id              String
+  coupon_id            String?
+  total_before_discount Int
+  status               String      @default("pending")
+  payment_status       String      @default("unpaid") // unpaid, paid, partially_paid
+  total_amount         Int
+  shipping_address     String
+  create_at            DateTime    @default(now())
+
+  user                 User        @relation(fields: [user_id], references: [id])
+  coupon               Coupon?     @relation(fields: [coupon_id], references: [id])
+  items                OrderItem[]
+  payments             Payment[]
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id                String  @id @default(cuid())
+  order_id          String
+  product_id        String
+  price_at_purchase Int
+  quantity          Int
+
+  order             Order   @relation(fields: [order_id], references: [id])
+  product           Product @relation(fields: [product_id], references: [id])
+
+  @@map("order_items")
+}
+
+model Coupon {
+  id                  String   @id @default(cuid())
+  code                String   @unique
+  user_id             String
+  discount_type       String   // percentage, fixed
+  discount_value      String
+  max_discount_amount Int?
+  start_date          DateTime
+  end_date            DateTime
+  status              String   @default("active")
+
+  user                User     @relation(fields: [user_id], references: [id])
+  orders              Order[]
+
+  @@map("coupons")
+}
+
+model Payment {
+  id             String   @id @default(cuid())
+  order_id       String
+  payment_method String
+  status         String   @default("pending")
+  paid_at        DateTime?
+  creat_at       DateTime @default(now())
+
+  order          Order    @relation(fields: [order_id], references: [id])
+
+  @@map("payments")
+}
