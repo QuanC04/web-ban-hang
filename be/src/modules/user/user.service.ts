@@ -23,15 +23,16 @@ export const getMe = async (req: Request) => {
 
 export const updateProfile= async(req:Request)=>{
   const userId = req.user?.userId;
-  const {phone_number,full_name,avatar_url}=req.body;
+  const {phone_number,full_name,avatar_url,avatar_key}=req.body;
   const user = await prisma.user.update({
     where: { id: userId },
-    data: { phone_number,full_name,avatar_url },
+    data: { phone_number,full_name,avatar_url,avatar_key },
     select: {
       id: true,
       username: true,
       full_name: true,
       avatar_url: true,
+      avatar_key: true,
       email: true,
       phone_number: true,
       role: true,

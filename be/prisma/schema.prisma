@@ -15,6 +15,7 @@ model User {
   email        String    @unique
   full_name    String?
   avatar_url   String?
+  avatar_key   String?
   phone_number String?
   password     String
   role         String    @default("customer")
@@ -66,6 +67,8 @@ model Product {
   name           String
   description    String?
   image_url      String?
+  image_key      String?
+  image_provider String   @default("cloudflare_r2")
   base_price     Int
   stock_quantity Int            @default(0)
   status         String         @default("active")

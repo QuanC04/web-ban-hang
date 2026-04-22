@@ -1,8 +1,10 @@
 import { Request, Response, NextFunction } from 'express'
+import { errorResponse } from '../utils/response'
 
 interface AppError {
   statusCode?: number
   message?: string
+  code?: string
 }
 
 export const asyncHandler = (fn: Function) => {
@@ -20,10 +22,7 @@ export const errorHandler = (
 ): void => {
   const statusCode = err.statusCode || 500
   const message = err.message || 'Lỗi server nội bộ'
+  const code = err.code || 'INTERNAL_SERVER_ERROR'
 
-  res.status(statusCode).json({
-    success: false,
-    message,
-    errors: null,
-  })
+  errorResponse(res, message, statusCode, code)
 }

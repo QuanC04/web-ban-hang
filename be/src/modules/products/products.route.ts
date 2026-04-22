@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { authenticate } from "../../middleware/authicate";
-import { addProductController, getCategoriesController, getProductByIdController, getProductsByUserIdController, updateProductController } from "./products.controller";
+import { addProductController, deleteProductController, getCategoriesController, getProductByIdController, getProductsByUserIdController, updateProductController } from "./products.controller";
 
 
 const productsRoute:Router=Router();
@@ -10,6 +10,7 @@ productsRoute.get('/categories',authenticate,getCategoriesController);
 productsRoute.get('/get-product',authenticate,getProductsByUserIdController);
 productsRoute.put('/update/:id',authenticate,updateProductController);
 productsRoute.get('/:id',authenticate,getProductByIdController);
+productsRoute.delete('/delete/:id',authenticate,deleteProductController);
 
 
 export default productsRoute;

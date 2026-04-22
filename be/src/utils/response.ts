@@ -8,6 +8,17 @@ export interface ApiResponse<T = null> {
   data: T | null
 }
 
+export interface ApiErrorPayload {
+  code: string
+  details?: unknown
+}
+
+export interface ApiErrorResponse {
+  success: boolean
+  message: string
+  error: ApiErrorPayload
+}
+
 export interface PaginatedResponse<T> {
   success: boolean
   message: string
@@ -40,11 +51,17 @@ export const errorResponse = (
   res: Response,
   message: string = 'Internal Server Error',
   statusCode: number = 500,
-  errors?: unknown
+  code: string = 'INTERNAL_SERVER_ERROR',
+  details?: unknown
 ): Response => {
-  return res.status(statusCode).json({
+  const response: ApiErrorResponse = {
     success: false,
     message,
-    errors: errors || null,
-  })
+    error: {
+      code,
+      details: details ?? null,
+    },
+  }
+
+  return res.status(statusCode).json(response)
 }

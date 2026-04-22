@@ -1,7 +1,8 @@
 import { asyncHandler } from "../../middleware/errorHandler";
 import { Request, Response } from 'express';
-import { addProduct, getCategories, getProductById, getProductsByUserId, updateProduct } from "./products.service";
-import { successResponse } from "../../utils/response";
+import { addProduct, deleteProduct, getCategories, getProductById, getProductsByUserId, updateProduct } from "./products.service";
+import { successResponse,errorResponse } from "../../utils/response";
+import { uploadFileToR2 } from "../upload/upload.service";
 
 export const addProductController= asyncHandler(async (req:Request, res:Response) => {
     const userId = req.user?.userId;
@@ -25,7 +26,7 @@ export const updateProductController = asyncHandler(async (req:Request, res:Resp
     const userId = req.user?.userId;
     const productId = req.params.id as string;
     const productData = req.body;
-    const result = await updateProduct(productId, userId, productData);
+   const result = await updateProduct(productId, userId, productData);
     successResponse(res, result, "Cập nhật sản phẩm thành công", 200);
 })
 
@@ -33,4 +34,11 @@ export const getProductByIdController = asyncHandler(async (req:Request, res:Res
     const productId = req.params.id as string;
     const result = await getProductById(productId);
     successResponse(res, result, "Lấy sản phẩm thành công", 200);
+})
+
+export const deleteProductController = asyncHandler(async (req:Request, res:Response) => {
+    const userId = req.user?.userId;
+    const productId = req.params.id as string;
+    const result = await deleteProduct(productId, userId);
+    successResponse(res, result, "Xóa sản phẩm thành công", 200);
 })
