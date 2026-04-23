@@ -119,3 +119,37 @@ export const logout = async (req: Request) => {
     });
   }
 };
+
+export const refreshToken = async (refreshToken: string) => {
+
+    if (!refreshToken) {
+        throw new Error('REFRESH_TOKEN_REQUIRED');
+    }
+
+    try {
+        const decoded: any = jwt.verify(refreshToken, REFRESH_TOKEN_SECRET);
+        const userId = decoded.userId;
+
+        const user = await prisma.user.findUnique({ where: { id: userId } });
+        if (!user || user.refresh_token !== refreshToken) {
+            throw new Error('INVALID_REFRESH_TOKEN');
+
+        }
+
+        const { accessToken, refreshToken: newRefreshToken } = generateTokens(user.id, user.role);
+
+        // Cập nhật refresh token mới vào DB
+        await prisma.user.update({
+            where: { id: userId },
+            data: { refresh_token: newRefreshToken },
+        });
+
+        return {
+            accessToken,
+            refreshToken: newRefreshToken,
+        };
+    }
+    catch (error) {
+        throw new Error('INVALID_REFRESH_TOKEN');
+    }
+};
