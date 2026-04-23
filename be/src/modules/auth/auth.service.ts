@@ -6,8 +6,8 @@ import { errorResponse } from '../../utils/response';
 
 // ==================== CONSTANTS ====================
 
-const ACCESS_TOKEN_SECRET = process.env.JWT_ACCESS_SECRET || 'access_secret_fallback';
-const REFRESH_TOKEN_SECRET = process.env.JWT_REFRESH_SECRET || 'refresh_secret_fallback';
+const ACCESS_TOKEN_SECRET = process.env.JWT_ACCESS_SECRET || 'secret';
+const REFRESH_TOKEN_SECRET = process.env.JWT_REFRESH_SECRET || 'secret';
 const ACCESS_TOKEN_EXPIRES = '15m';
 const REFRESH_TOKEN_EXPIRES = '7d';
 

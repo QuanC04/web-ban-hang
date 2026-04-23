@@ -1,7 +1,7 @@
 import { asyncHandler } from "../../middleware/errorHandler";
 import { errorResponse, successResponse } from "../../utils/response";
 import { Request, Response, NextFunction } from 'express';
-import { login, logout, register } from "./auth.service";
+import { login, logout, refreshToken, register } from "./auth.service";
 
 export const registerController = asyncHandler(async (req: Request, res: Response) => {
     const result = await register(req, res);
@@ -19,9 +19,9 @@ export const logoutController = asyncHandler(async (req: Request, res: Response)
 })
 
 export const refreshTokenController = asyncHandler(async (req: Request, res: Response) => {
-    const { refreshToken } = req.body;
+    const { oldRefreshToken } = req.body;
    try {
-        const result = await refreshToken(refreshToken);
+        const result = await refreshToken(oldRefreshToken);
 
         return successResponse(res, result, "Làm mới token thành công", 200);
     } catch (error: any) {
