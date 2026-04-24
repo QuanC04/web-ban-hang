@@ -1,0 +1,16 @@
+import prisma from "../../lib/prisma";
+
+
+export const getMarketProducts = async () => {
+    const marketProducts = await prisma.product.findMany({
+        select: {
+            id: true,
+            name: true,
+            base_price: true,
+            description: true,
+            image_url: true,
+            created_at: true,
+        },
+    });
+    return marketProducts;
+};

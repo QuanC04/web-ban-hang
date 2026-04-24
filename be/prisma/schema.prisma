@@ -71,6 +71,7 @@ model Product {
   image_provider String   @default("cloudflare_r2")
   base_price     Int
   stock_quantity Int            @default(0)
+  rating         String
   status         String         @default("active")
   create_at      DateTime       @default(now())
 

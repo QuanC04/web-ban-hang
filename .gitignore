@@ -40,3 +40,8 @@ Thumbs.db
 *.njsproj
 *.sln
 *.sw?
+
+.agents
+.AGENTS.md
+.DESIGN.md
+.PRODUCT.md
