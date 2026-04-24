@@ -2,7 +2,6 @@ import { asyncHandler } from "../../middleware/errorHandler";
 import { Request, Response } from 'express';
 import { addProduct, deleteProduct, getCategories, getProductById, getProductsByUserId, updateProduct } from "./products.service";
 import { successResponse,errorResponse } from "../../utils/response";
-import { uploadFileToR2 } from "../upload/upload.service";
 
 export const addProductController= asyncHandler(async (req:Request, res:Response) => {
     const userId = req.user?.userId;

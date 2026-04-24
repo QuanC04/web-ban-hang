@@ -10,6 +10,7 @@ import userRoutes from './modules/user/user.route';
 import addressRoutes from './modules/address/address.route';
 import productsRoute from './modules/products/products.route';
 import uploadRoute from './modules/upload/upload.route';
+import marketProductRoute from './modules/marketProduct/marketProduct.route';
 
 
 const app: Application = express();
@@ -37,6 +38,7 @@ app.use('/api/user', userRoutes);
 app.use('/api/addresses', addressRoutes);
 app.use('/api/products', productsRoute);
 app.use('/api/upload', uploadRoute);
+app.use('/api/market', marketProductRoute);
 
 
 // ==================== ERROR HANDLER ====================
