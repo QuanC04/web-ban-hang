@@ -19,3 +19,36 @@ export const getMarketProducts = async () => {
     });
     return marketProducts;
 };
+
+export const getMarketProductById = async (productId: string) => {
+  const marketProduct = await prisma.product.findUnique({
+    where: { id: productId },
+    select: {
+        id: true,
+        name: true,
+        base_price: true,
+        description: true,
+        image_url: true,
+        create_at: true,
+        user: {
+            select: {
+                id: true,
+                full_name: true,
+                addresses: {
+                    select: {
+
+                        province: true,
+
+                    },
+                }
+            },
+        },
+        category: {
+            select: {
+                name: true,
+            },
+        },
+    },
+  });
+  return marketProduct;
+};

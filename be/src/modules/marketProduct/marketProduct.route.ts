@@ -1,8 +1,9 @@
 import { Router } from "express";
-import { getMarketProductsController } from "./marketProduct.controller";
+import { getMarketProductByIdController, getMarketProductsController } from "./marketProduct.controller";
 
 const marketProductRoute: Router = Router();
 
 marketProductRoute.get('/market-product', getMarketProductsController);
+marketProductRoute.get('/market-product/:productId', getMarketProductByIdController);
 
 export default marketProductRoute;
