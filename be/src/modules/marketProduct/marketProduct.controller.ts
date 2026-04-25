@@ -3,7 +3,7 @@ import { successResponse } from "../../utils/response";
 import { getMarketProducts } from "./marketProduct.service";
 
 
-export const getMarketProductsController = async (res:Response,req:Request) => {
+export const getMarketProductsController = async (req:Request,res:Response) => {
     const marketProducts= await getMarketProducts();
     successResponse(res,marketProducts, 'Lấy danh sách sản phẩm thành công');
 }
