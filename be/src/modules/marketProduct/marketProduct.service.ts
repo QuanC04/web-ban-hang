@@ -36,8 +36,8 @@ export const getMarketProductById = async (productId: string) => {
                 full_name: true,
                 addresses: {
                     select: {
-
-                        province: true,
+                        province_name: true,
+                        province_id: true,
 
                     },
                 }

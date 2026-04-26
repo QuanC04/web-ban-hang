@@ -36,7 +36,8 @@ model Address {
   user_id    String
   name       String
   phone_number String
-  province   String
+  province_id   String?
+  province_name String?
   district   String
   street     String
   isdefault  Boolean  @default(false)

@@ -9,11 +9,9 @@ const ensureUserId = (userId?: string) => {
 };
 
 const validateCreateAddressPayload = (address:any )  => {
-    const { name, phone_number, district, province, street, isdefault } = address;
+    const { name, phone_number, district, province_id,province_name, street, isdefault } = address;
 
-
-
-    return { name, phone_number, district, province, street, isdefault };
+    return { name, phone_number, district, province_id,province_name, street, isdefault };
 };
 
 const setNewestAddressAsDefaultIfNeeded = async (userId: string) => {
@@ -44,7 +42,7 @@ const setNewestAddressAsDefaultIfNeeded = async (userId: string) => {
 export const createAddress = async (userId: string, address: any) => {
     ensureUserId(userId);
 
-    const { name, phone_number, district, province, street, isdefault } =
+    const { name, phone_number, district, province_id,province_name, street, isdefault } =
         validateCreateAddressPayload(address);
     const hasAddress = await prisma.address.count({ where: { user_id: userId } });
     const shouldBeDefault = isdefault === true || hasAddress === 0;
@@ -61,7 +59,8 @@ export const createAddress = async (userId: string, address: any) => {
                     name,
                     phone_number,
                     district,
-                    province,
+                    province_id,
+                    province_name,
                     street,
                     isdefault: true,
                     user_id: userId,
@@ -77,7 +76,8 @@ export const createAddress = async (userId: string, address: any) => {
             name,
             phone_number,
             district,
-            province,
+            province_id,
+            province_name,
             street,
             isdefault: false,
             user_id: userId,
@@ -142,7 +142,7 @@ export const updateAddress = async (addressId: string, userId: string, address: 
         throw new Error("Address not found or unauthorized");
     }
 
-    const { name, phone_number, district, province, street, isdefault } = address;
+    const { name, phone_number, district, province_id,province_name, street, isdefault } = address;
 
     if (isdefault === true) {
         const updated = await prisma.$transaction(async (tx) => {
@@ -153,7 +153,7 @@ export const updateAddress = async (addressId: string, userId: string, address: 
 
             return tx.address.update({
                 where: { id: addressId },
-                data: { name, phone_number, district, province, street, isdefault: true },
+                data: { name, phone_number, district, province_id,province_name, street, isdefault: true },
             });
     });
 
@@ -166,7 +166,8 @@ export const updateAddress = async (addressId: string, userId: string, address: 
             name,
             phone_number,
             district,
-            province,
+            province_id,
+            province_name,
             street,
             isdefault,
         },
