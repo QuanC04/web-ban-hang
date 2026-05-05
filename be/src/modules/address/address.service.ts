@@ -1,17 +1,23 @@
-import prisma from "../../lib/prisma";
-
-
+import prisma from '../../lib/prisma';
 
 const ensureUserId = (userId?: string) => {
     if (!userId) {
-        throw new Error("Unauthorized");
+        throw new Error('Unauthorized');
     }
 };
 
-const validateCreateAddressPayload = (address:any )  => {
-    const { name, phone_number, district, province_id,province_name, street, isdefault } = address;
+const validateCreateAddressPayload = (address: any) => {
+    const { name, phone_number, district, province_id, province_name, street, isdefault } = address;
 
-    return { name, phone_number, district, province_id,province_name, street, isdefault };
+    return {
+        name,
+        phone_number,
+        district,
+        province_id,
+        province_name,
+        street,
+        isdefault,
+    };
 };
 
 const setNewestAddressAsDefaultIfNeeded = async (userId: string) => {
@@ -26,7 +32,7 @@ const setNewestAddressAsDefaultIfNeeded = async (userId: string) => {
 
     const fallback = await prisma.address.findFirst({
         where: { user_id: userId },
-        orderBy: { creat_at: "desc" },
+        orderBy: { created_at: 'desc' },
         select: { id: true },
     });
 
@@ -38,11 +44,10 @@ const setNewestAddressAsDefaultIfNeeded = async (userId: string) => {
     }
 };
 
-
 export const createAddress = async (userId: string, address: any) => {
     ensureUserId(userId);
 
-    const { name, phone_number, district, province_id,province_name, street, isdefault } =
+    const { name, phone_number, district, province_id, province_name, street, isdefault } =
         validateCreateAddressPayload(address);
     const hasAddress = await prisma.address.count({ where: { user_id: userId } });
     const shouldBeDefault = isdefault === true || hasAddress === 0;
@@ -91,7 +96,7 @@ export const getAddressByUserId = async (userId: string) => {
     ensureUserId(userId);
     const addresses = await prisma.address.findMany({
         where: { user_id: userId },
-        orderBy: [{ isdefault: "desc" }, { creat_at: "desc" }],
+        orderBy: [{ isdefault: 'desc' }, { created_at: 'desc' }],
     });
     return addresses;
 };
@@ -104,18 +109,18 @@ export const deleteAddress = async (addressId: string, userId: string) => {
     });
 
     if (!address || address.user_id !== userId) {
-        throw new Error("Address not found or unauthorized");
+        throw new Error('Address not found or unauthorized');
     }
 
     await prisma.$transaction(async (tx) => {
         await tx.address.delete({
             where: { id: addressId },
-    });
+        });
 
         if (address.isdefault) {
             const fallback = await tx.address.findFirst({
                 where: { user_id: userId },
-                orderBy: { creat_at: "desc" },
+                orderBy: { created_at: 'desc' },
                 select: { id: true },
             });
 
@@ -139,10 +144,10 @@ export const updateAddress = async (addressId: string, userId: string, address: 
     });
 
     if (!existingAddress || existingAddress.user_id !== userId) {
-        throw new Error("Address not found or unauthorized");
+        throw new Error('Address not found or unauthorized');
     }
 
-    const { name, phone_number, district, province_id,province_name, street, isdefault } = address;
+    const { name, phone_number, district, province_id, province_name, street, isdefault } = address;
 
     if (isdefault === true) {
         const updated = await prisma.$transaction(async (tx) => {
@@ -153,9 +158,17 @@ export const updateAddress = async (addressId: string, userId: string, address: 
 
             return tx.address.update({
                 where: { id: addressId },
-                data: { name, phone_number, district, province_id,province_name, street, isdefault: true },
+                data: {
+                    name,
+                    phone_number,
+                    district,
+                    province_id,
+                    province_name,
+                    street,
+                    isdefault: true,
+                },
             });
-    });
+        });
 
         return updated;
     }
@@ -177,8 +190,8 @@ export const updateAddress = async (addressId: string, userId: string, address: 
         await setNewestAddressAsDefaultIfNeeded(userId);
         return prisma.address.findUnique({
             where: { id: addressId },
-    });
+        });
     }
 
     return updatedAddress;
-}
+};

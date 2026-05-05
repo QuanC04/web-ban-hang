@@ -1,5 +1,4 @@
-import prisma from "../../lib/prisma";
-
+import prisma from '../../lib/prisma';
 
 export const getMarketProducts = async () => {
     const marketProducts = await prisma.product.findMany({
@@ -9,7 +8,7 @@ export const getMarketProducts = async () => {
             base_price: true,
             description: true,
             image_url: true,
-            create_at: true,
+            created_at: true,
             user: {
                 select: {
                     full_name: true,
@@ -21,34 +20,33 @@ export const getMarketProducts = async () => {
 };
 
 export const getMarketProductById = async (productId: string) => {
-  const marketProduct = await prisma.product.findUnique({
-    where: { id: productId },
-    select: {
-        id: true,
-        name: true,
-        base_price: true,
-        description: true,
-        image_url: true,
-        create_at: true,
-        user: {
-            select: {
-                id: true,
-                full_name: true,
-                addresses: {
-                    select: {
-                        province_name: true,
-                        province_id: true,
-
+    const marketProduct = await prisma.product.findUnique({
+        where: { id: productId },
+        select: {
+            id: true,
+            name: true,
+            base_price: true,
+            description: true,
+            image_url: true,
+            created_at: true,
+            user: {
+                select: {
+                    id: true,
+                    full_name: true,
+                    addresses: {
+                        select: {
+                            province_name: true,
+                            province_id: true,
+                        },
                     },
-                }
+                },
+            },
+            category: {
+                select: {
+                    name: true,
+                },
             },
         },
-        category: {
-            select: {
-                name: true,
-            },
-        },
-    },
-  });
-  return marketProduct;
+    });
+    return marketProduct;
 };

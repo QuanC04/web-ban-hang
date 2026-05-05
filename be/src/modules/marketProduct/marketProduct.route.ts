@@ -1,5 +1,8 @@
-import { Router } from "express";
-import { getMarketProductByIdController, getMarketProductsController } from "./marketProduct.controller";
+import { Router } from 'express';
+import {
+    getMarketProductByIdController,
+    getMarketProductsController,
+} from './marketProduct.controller';
 
 const marketProductRoute: Router = Router();
 

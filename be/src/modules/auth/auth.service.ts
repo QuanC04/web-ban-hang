@@ -14,114 +14,109 @@ const REFRESH_TOKEN_EXPIRES = '7d';
 // ==================== HELPERS ====================
 
 const generateTokens = (userId: string, role: string) => {
-  const accessToken = jwt.sign(
-    { userId, role },
-    ACCESS_TOKEN_SECRET,
-    { expiresIn: ACCESS_TOKEN_EXPIRES }
-  );
-  const refreshToken = jwt.sign(
-    { userId },
-    REFRESH_TOKEN_SECRET,
-    { expiresIn: REFRESH_TOKEN_EXPIRES }
-  );
-  return { accessToken, refreshToken };
+    const accessToken = jwt.sign({ userId, role }, ACCESS_TOKEN_SECRET, {
+        expiresIn: ACCESS_TOKEN_EXPIRES,
+    });
+    const refreshToken = jwt.sign({ userId }, REFRESH_TOKEN_SECRET, {
+        expiresIn: REFRESH_TOKEN_EXPIRES,
+    });
+    return { accessToken, refreshToken };
 };
 
 // ==================== SERVICE METHODS ====================
 
 export const register = async (req: Request, res: Response) => {
-  const { username, email, password, role } = req.body;
+    const { username, email, password, role } = req.body;
 
-  if (!username || !email || !password) {
-    errorResponse(res, 'Username, email và password là bắt buộc', 400);
-    return;
-  }
+    if (!username || !email || !password) {
+        errorResponse(res, 'Username, email và password là bắt buộc', 400);
+        return;
+    }
 
-  // Kiểm tra email hoặc username đã tồn tại chưa
-  const existingUser = await prisma.user.findFirst({
-    where: {
-      OR: [{ email }, { username }],
-    },
-  });
-  if (existingUser) {
-    const field = existingUser.email === email ? 'Email' : 'Username';
-    errorResponse(res, `${field} đã được sử dụng`, 409);
-    return;
-  }
+    // Kiểm tra email hoặc username đã tồn tại chưa
+    const existingUser = await prisma.user.findFirst({
+        where: {
+            OR: [{ email }, { username }],
+        },
+    });
+    if (existingUser) {
+        const field = existingUser.email === email ? 'Email' : 'Username';
+        errorResponse(res, `${field} đã được sử dụng`, 409);
+        return;
+    }
 
-  const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await bcrypt.hash(password, 10);
 
-  const newUser = await prisma.user.create({
-    data: {
-      username,
-      email,
-      password: hashedPassword,
-      role: role || 'customer',
-    },
-    select: {
-      id: true,
-      username: true,
-      email: true,
-      phone_number: true,
-      role: true,
-      created_at: true,
-    },
-  });
+    const newUser = await prisma.user.create({
+        data: {
+            username,
+            email,
+            password: hashedPassword,
+            role: role || 'customer',
+        },
+        select: {
+            id: true,
+            username: true,
+            email: true,
+            phone_number: true,
+            role: true,
+            created_at: true,
+        },
+    });
 
-  return { user: newUser };
+    return { user: newUser };
 };
 
 export const login = async (req: Request, res: Response) => {
-  const { username, password } = req.body;
+    const { username, password } = req.body;
 
-  if (!username || !password) {
-    errorResponse(res, 'Username và password là bắt buộc', 400);
-    return;
-  }
+    if (!username || !password) {
+        errorResponse(res, 'Username và password là bắt buộc', 400);
+        return;
+    }
 
-  const user = await prisma.user.findUnique({ where: { username } });
-  if (!user) {
-    errorResponse(res, 'Tài khoản không tồn tại', 401);
-    return;
-  }
+    const user = await prisma.user.findUnique({ where: { username } });
+    if (!user) {
+        errorResponse(res, 'Tài khoản không tồn tại', 401);
+        return;
+    }
 
-  const isPasswordValid = await bcrypt.compare(password, user.password);
-  if (!isPasswordValid) {
-    errorResponse(res, 'Mật khẩu không chính xác', 401);
-    return;
-  }
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+        errorResponse(res, 'Mật khẩu không chính xác', 401);
+        return;
+    }
 
-  const { accessToken, refreshToken } = generateTokens(user.id, user.role);
+    const { accessToken, refreshToken } = generateTokens(user.id, user.role);
 
-  // Lưu refresh token vào DB
-  await prisma.user.update({
-    where: { id: user.id },
-    data: { refresh_token: refreshToken },
-  });
+    // Lưu refresh token vào DB
+    await prisma.user.update({
+        where: { id: user.id },
+        data: { refresh_token: refreshToken },
+    });
 
-  const { password: _, refresh_token: __, access_token: ___, ...userWithoutSensitive } = user;
+    const { password: _, refresh_token: __, access_token: ___, ...userWithoutSensitive } = user;
 
-  return {
-    user: userWithoutSensitive,
-    accessToken,
-    refreshToken,
-  };
+    return {
+        user: userWithoutSensitive,
+        accessToken,
+        refreshToken,
+    };
 };
 
 export const logout = async (req: Request) => {
-  // userId được gắn bởi middleware authenticate
-  const userId = (req as any).user?.userId;
+    // userId được gắn bởi middleware authenticate
+    const userId = (req as any).user?.userId;
 
-  if (userId) {
-    await prisma.user.update({
-      where: { id: userId },
-      data: { refresh_token: null },
-    });
-  }
+    if (userId) {
+        await prisma.user.update({
+            where: { id: userId },
+            data: { refresh_token: null },
+        });
+    }
 };
 
 export const refreshToken = async (refreshToken: string) => {
-
     if (!refreshToken) {
         throw new Error('REFRESH_TOKEN_REQUIRED');
     }
@@ -133,7 +128,6 @@ export const refreshToken = async (refreshToken: string) => {
         const user = await prisma.user.findUnique({ where: { id: userId } });
         if (!user || user.refresh_token !== refreshToken) {
             throw new Error('INVALID_REFRESH_TOKEN');
-
         }
 
         const { accessToken, refreshToken: newRefreshToken } = generateTokens(user.id, user.role);
@@ -148,8 +142,7 @@ export const refreshToken = async (refreshToken: string) => {
             accessToken,
             refreshToken: newRefreshToken,
         };
-    }
-    catch (error) {
+    } catch (error) {
         throw new Error('INVALID_REFRESH_TOKEN');
     }
 };

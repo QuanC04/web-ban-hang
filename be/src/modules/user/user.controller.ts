@@ -1,7 +1,6 @@
-import { Request, Response } from "express";
-import { getMe, updateProfile } from "./user.service";
-import { successResponse, errorResponse } from "../../utils/response";
-
+import { Request, Response } from 'express';
+import { getMe, updateProfile } from './user.service';
+import { successResponse, errorResponse } from '../../utils/response';
 
 export const getMeController = async (req: Request, res: Response) => {
     const user = await getMe(req);
@@ -9,7 +8,6 @@ export const getMeController = async (req: Request, res: Response) => {
 };
 
 export const updateProfileController = async (req: Request, res: Response) => {
-
     const user = await updateProfile(req);
     successResponse(res, user);
 };

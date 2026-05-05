@@ -12,4 +12,4 @@ export const authenticate = (req: Request, res: Response, next: NextFunction) =>
     } catch (error) {
         return res.status(401).json({ message: 'Unauthorized' });
     }
-}
+};
