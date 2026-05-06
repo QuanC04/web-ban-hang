@@ -1,4 +1,4 @@
-import type { Address, Category, Product, User } from '@prisma/client';
+import type { Address, CartItem, Category, Product, User } from '@prisma/client';
 import type { Request } from 'express';
 
 export type { Address, Category, Product, User };
@@ -106,4 +106,16 @@ export interface AppError {
 export interface CartItemPayload {
     productId: string;
     quantity: number;
+}
+
+export interface OrderItemPayload {
+    productId: string;
+    quantity: number;
+    price: number;
+}
+
+export interface OrderPayload {
+    cartItemsIds: string[];
+    shipping_address: AddressPayload;
+    coupon_id?: string | null;
 }

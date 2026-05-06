@@ -10,7 +10,7 @@ import { authenticate } from '../../middleware/authicate';
 const addressRoutes: Router = Router();
 
 addressRoutes.post('/create', authenticate, createAddressController);
-addressRoutes.get('/user', authenticate, getAddressController);
+addressRoutes.get('/get-address', authenticate, getAddressController);
 addressRoutes.delete('/:addressId', authenticate, deleteAddressController);
 addressRoutes.put('/:addressId', authenticate, updateAddressController);
 
