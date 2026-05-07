@@ -44,7 +44,7 @@ export const getProductByIdController = asyncHandler(async (req: Request, res: R
 
 export const deleteProductController = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user?.userId;
-    const productId = req.params.id as string;
+    const productId = req.params.productId as string;
     const result = await deleteProduct(productId, userId);
     successResponse(res, result, 'Xóa sản phẩm thành công', 200);
 });

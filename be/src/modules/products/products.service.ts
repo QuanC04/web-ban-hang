@@ -28,8 +28,16 @@ export const addProduct = async (userId: string, productData: ProductPayload) =>
 };
 
 export const updateProduct = async (productId: string, userId: string, productData: any) => {
-    const { name, description, category_id, base_price, stock_quantity, image_url, image_key } =
-        productData;
+    const {
+        name,
+        description,
+        category_id,
+        base_price,
+        stock_quantity,
+        image_url,
+        image_key,
+        status,
+    } = productData;
 
     const existingProduct = await prisma.product.findFirst({
         where: {
@@ -61,6 +69,7 @@ export const updateProduct = async (productId: string, userId: string, productDa
             image_key,
             base_price,
             stock_quantity,
+            status,
         },
     });
 
@@ -79,6 +88,14 @@ export const getCategories = async () => {
 export const getProductsByUserId = async (userId: string) => {
     const products = await prisma.product.findMany({
         where: { user_id: userId },
+        include: {
+            category: {
+                select: {
+                    id: true,
+                    name: true,
+                },
+            },
+        },
     });
     return products;
 };

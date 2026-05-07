@@ -16,6 +16,6 @@ productsRoute.get('/categories', authenticate, getCategoriesController);
 productsRoute.get('/get-product', authenticate, getProductsByUserIdController);
 productsRoute.put('/update/:id', authenticate, updateProductController);
 productsRoute.get('/:id', authenticate, getProductByIdController);
-productsRoute.delete('/delete/:id', authenticate, deleteProductController);
+productsRoute.delete('/delete/:productId', authenticate, deleteProductController);
 
 export default productsRoute;

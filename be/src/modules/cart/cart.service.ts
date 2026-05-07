@@ -65,12 +65,6 @@ export const updateCartItem = async (
     const nextQuantity = hasQuantity
         ? payload.quantity!
         : existingCartItem.quantity + (hasDelta ? payload.delta! : 0);
-    if (nextQuantity <= 0) {
-        await prisma.cartItem.delete({
-            where: { id: cartItemId },
-        });
-        return null;
-    }
 
     if (nextQuantity > product.stock_quantity) {
         throw new Error('Insufficient stock');
@@ -98,16 +92,16 @@ export const getCartItemsByUserId = async (userId: string) => {
     const cartItems = await prisma.cartItem.findMany({
         where: { user_id: userId },
         include: {
-            product:{
-             include: {
-                user: {
-                    select: {
-                       full_name: true,
+            product: {
+                include: {
+                    user: {
+                        select: {
+                            full_name: true,
+                        },
                     },
-                }
+                },
             },
         },
-    }
     });
     return cartItems;
 };

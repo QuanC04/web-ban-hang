@@ -23,7 +23,7 @@ export const createCartItemController = async (req: Request, res: Response) => {
 export const updateCartItemController = async (req: Request, res: Response) => {
     const userId = req.user?.userId;
     const { quantity, itemId } = req.body;
-    const updatedCartItem = await updateCartItem(itemId, userId, quantity);
+    const updatedCartItem = await updateCartItem(itemId, userId, { quantity });
     successResponse(res, updatedCartItem, 'Cập nhật giỏ hàng thành công', 200);
 };
 
