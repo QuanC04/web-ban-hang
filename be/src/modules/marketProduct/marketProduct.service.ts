@@ -9,6 +9,7 @@ export const getMarketProducts = async () => {
             description: true,
             image_url: true,
             created_at: true,
+            status: true,
             user: {
                 select: {
                     full_name: true,

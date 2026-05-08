@@ -97,7 +97,26 @@ export const getProductsByUserId = async (userId: string) => {
             },
         },
     });
-    return products;
+    const soldItems = await prisma.orderItem.groupBy({
+        by: ['product_id'],
+        where: {
+            product_id: {
+                in: products.map((p) => p.id),
+            },
+            order: {
+                status: 'completed',
+            },
+        },
+        _sum: { quantity: true },
+    });
+    const productsWithSoldCount = products.map((product) => {
+        const soldItem = soldItems.find((item) => item.product_id === product.id);
+        return {
+            ...product,
+            sold_count: soldItem?._sum.quantity || 0,
+        };
+    });
+    return productsWithSoldCount;
 };
 
 export const getProductById = async (productId: string) => {
