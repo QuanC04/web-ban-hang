@@ -4,6 +4,6 @@ import { authenticate } from '../../middleware/authicate';
 
 const orderRouter: Router = Router();
 
-orderRouter.post('/create', authenticate, createOrderController);
+orderRouter.post('/create-order', authenticate, createOrderController);
 
 export default orderRouter;

@@ -117,5 +117,16 @@ export interface OrderItemPayload {
 export interface OrderPayload {
     cartItemsIds: string[];
     shipping_address: AddressPayload;
-    coupon_id?: string | null;
+    coupon_code?: string | null;
+}
+
+export interface CouponPayload {
+    code: string;
+    discount_type: 'percentage' | 'fixed_amount';
+    discount_value: number;
+    max_discount_amount?: number;
+    min_order_amount: number;
+    usage_limit?: number;
+    per_user_limit?: number;
+    status: 'active' | 'inactive';
 }

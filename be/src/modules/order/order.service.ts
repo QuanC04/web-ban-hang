@@ -1,8 +1,9 @@
 import prisma from '../../lib/prisma';
 import { OrderPayload } from '../../models';
+import { validateCouponData } from '../coupon/coupon.service';
 
 export const createOrder = async (userId: string, orderData: OrderPayload) => {
-    const { cartItemsIds, shipping_address, coupon_id } = orderData;
+    const { cartItemsIds, shipping_address, coupon_code } = orderData;
     const cartItems = await prisma.cartItem.findMany({
         where: {
             id: {
@@ -21,7 +22,16 @@ export const createOrder = async (userId: string, orderData: OrderPayload) => {
         (total, item) => total + item.product.base_price * item.quantity,
         0,
     );
-    const totalAmount = totalbeforeDiscount;
+    let coupon_id: string | null = null;
+    let shippingFee = 22000;
+    let discountAmount = 0;
+    let totalAmount = totalbeforeDiscount + shippingFee;
+    if (coupon_code) {
+        const result = await validateCouponData(coupon_code, userId, totalbeforeDiscount);
+        coupon_id = result.coupon.id;
+        discountAmount = result.discountAmount;
+        totalAmount = totalbeforeDiscount - discountAmount + shippingFee;
+    }
     return prisma.$transaction(async (tx) => {
         for (const item of cartItems) {
             if (item.quantity > item.product.stock_quantity) {

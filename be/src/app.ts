@@ -13,6 +13,7 @@ import uploadRoute from './modules/upload/upload.route';
 import marketProductRoute from './modules/marketProduct/marketProduct.route';
 import cartRouter from './modules/cart/cart.route';
 import orderRouter from './modules/order/order.route';
+import couponRouter from './modules/coupon/coupon.route';
 
 const app: Application = express();
 
@@ -46,6 +47,7 @@ app.use('/api/upload', uploadRoute);
 app.use('/api/market', marketProductRoute);
 app.use('/api/cart', cartRouter);
 app.use('/api/order', orderRouter);
+app.use('/api/coupon', couponRouter);
 
 // ==================== ERROR HANDLER ====================
 app.use(errorHandler);

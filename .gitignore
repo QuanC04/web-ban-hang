@@ -42,7 +42,8 @@ Thumbs.db
 *.sln
 *.sw?
 
-.agents
-.AGENTS.md
-.DESIGN.md
-.PRODUCT.md
+.agents/
+AGENTS.md
+DESIGN.md
+PRODUCT.md
+skills-lock.json
