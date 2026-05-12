@@ -40,6 +40,8 @@ const formatPrice = (value: number) =>
     maximumFractionDigits: 0,
   }).format(value);
 
+const PRODUCTS_PER_PAGE = 5;
+
 const getProductStatusLabel = (product: ProductItem) => {
   if (product.status === "active" && product.stock_quantity > 0)
     return "Đang bán";
@@ -63,6 +65,7 @@ const ShopProductsPage = () => {
     null,
   );
   const [isDeletingSelected, setIsDeletingSelected] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const loadProducts = useCallback(async () => {
     if (!user?.id) {
@@ -129,6 +132,30 @@ const ShopProductsPage = () => {
     });
   }, [products, query, sortBy, statusFilter, stockFilter]);
 
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredProducts.length / PRODUCTS_PER_PAGE),
+  );
+  const currentPageProducts = filteredProducts.slice(
+    (currentPage - 1) * PRODUCTS_PER_PAGE,
+    currentPage * PRODUCTS_PER_PAGE,
+  );
+  const firstVisibleProductNumber = filteredProducts.length
+    ? (currentPage - 1) * PRODUCTS_PER_PAGE + 1
+    : 0;
+  const lastVisibleProductNumber = Math.min(
+    currentPage * PRODUCTS_PER_PAGE,
+    filteredProducts.length,
+  );
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [query, sortBy, statusFilter, stockFilter]);
+
+  useEffect(() => {
+    setCurrentPage((page) => Math.min(page, totalPages));
+  }, [totalPages]);
+
   const lowStockCount = products.filter(
     (product) => product.stock_quantity > 0 && product.stock_quantity < 20,
   ).length;
@@ -139,14 +166,14 @@ const ShopProductsPage = () => {
     (product) => product.stock_quantity >= 20,
   ).length;
   const selectedVisibleProducts = selectedProducts.filter((id) =>
-    filteredProducts.some((product) => product.id === id),
+    currentPageProducts.some((product) => product.id === id),
   );
   const allVisibleSelected =
-    filteredProducts.length > 0 &&
-    selectedVisibleProducts.length === filteredProducts.length;
+    currentPageProducts.length > 0 &&
+    selectedVisibleProducts.length === currentPageProducts.length;
 
   const handleSelectAll = () => {
-    const visibleIds = filteredProducts.map((product) => product.id);
+    const visibleIds = currentPageProducts.map((product) => product.id);
     setSelectedProducts((prev) =>
       allVisibleSelected
         ? prev.filter((id) => !visibleIds.includes(id))
@@ -427,7 +454,7 @@ const ShopProductsPage = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredProducts.map((product) => {
+                      {currentPageProducts.map((product) => {
                         const isActive = product.status === "active";
                         const isDeleting = deletingProductId === product.id;
                         const soldQuantity = product.sold_quantity || 0;
@@ -543,25 +570,28 @@ const ShopProductsPage = () => {
 
                 <div className="mt-6 flex flex-col gap-4 border-t border-[#e2e8f0] pt-6 sm:flex-row sm:items-center sm:justify-between">
                   <p className="text-[#64748b]">
-                    Hiển thị 1-{filteredProducts.length} trong {products.length}{" "}
+                    Hiển thị {firstVisibleProductNumber}-
+                    {lastVisibleProductNumber} trong {filteredProducts.length}{" "}
                     sản phẩm
                   </p>
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
-                      className="rounded-lg border border-[#e2e8f0] px-4 py-2 opacity-50"
-                      disabled>
+                      onClick={() => setCurrentPage((page) => page - 1)}
+                      disabled={currentPage === 1}
+                      className="rounded-lg border border-[#e2e8f0] px-4 py-2 disabled:cursor-not-allowed disabled:opacity-50">
                       Trước
                     </button>
                     <button
                       type="button"
                       className="rounded-lg bg-[#0f172a] px-4 py-2 text-white">
-                      1
+                      {currentPage}/{totalPages}
                     </button>
                     <button
                       type="button"
-                      className="rounded-lg border border-[#e2e8f0] px-4 py-2 opacity-50"
-                      disabled>
+                      onClick={() => setCurrentPage((page) => page + 1)}
+                      disabled={currentPage === totalPages}
+                      className="rounded-lg border border-[#e2e8f0] px-4 py-2 disabled:cursor-not-allowed disabled:opacity-50">
                       Sau
                     </button>
                   </div>

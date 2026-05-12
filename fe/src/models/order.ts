@@ -5,5 +5,5 @@ export interface OrderData {
     phone_number: string;
     address: string;
   };
-  coupon_id: string | null;
+  coupon_code: string | null;
 }

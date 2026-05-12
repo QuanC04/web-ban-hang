@@ -6,6 +6,7 @@ import { getAddressByUserId } from "../api/address";
 import type { AddressItem } from "../models";
 import AddAddressModal from "../component/addAddressModal";
 import { createOrder } from "../api/order";
+import { validateCoupon } from "../api/coupon";
 
 const formatPrice = (value: number) =>
   new Intl.NumberFormat("vi-VN", {
@@ -19,6 +20,7 @@ const CheckoutPage = () => {
   const checkoutCartItemsIds = useCartStore(
     (state) => state.checkoutCartItemsIds,
   );
+  const checkoutCouponCode = useCartStore((state) => state.checkoutCouponCode);
   const cartItems = useCartStore((state) => state.cartItems);
   const fetchCart = useCartStore((state) => state.fetchCart);
   const clearcheckoutCartItemsIds = useCartStore(
@@ -31,6 +33,22 @@ const CheckoutPage = () => {
   const [savedAddresses, setSavedAddresses] = useState<AddressItem[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState("");
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
+  const [discount, setDiscount] = useState(0);
+
+  const rows = useMemo(() => {
+    const selectedProductIds =
+      checkoutCartItemsIds ?? cartItems.map((item) => item.id);
+
+    return cartItems.filter((item) => selectedProductIds.includes(item.id));
+  }, [checkoutCartItemsIds, cartItems]);
+
+  const subtotal = rows.reduce(
+    (sum, row) => sum + row.product.base_price * row.quantity,
+    0,
+  );
+
+  const shippingFee = rows.length ? 22000 : 0;
+  const total = subtotal + shippingFee - discount;
 
   const loadAddresses = async () => {
     try {
@@ -56,12 +74,21 @@ const CheckoutPage = () => {
     }
   };
 
+  const validatCoupon = async () => {
+    if (!checkoutCouponCode) return;
+    const result = await validateCoupon(checkoutCouponCode, subtotal);
+    if (result.success) {
+      setDiscount(result.data.discountAmount);
+    }
+  };
+
   useEffect(() => {
     void Promise.resolve().then(loadAddresses);
     const fetchCartData = async () => {
       await fetchCart();
     };
     fetchCartData();
+    validatCoupon();
   }, [fetchCart]);
 
   const handleSelectAddress = (addressItem: AddressItem) => {
@@ -75,20 +102,6 @@ const CheckoutPage = () => {
     );
   };
 
-  const rows = useMemo(() => {
-    const selectedProductIds =
-      checkoutCartItemsIds ?? cartItems.map((item) => item.id);
-
-    return cartItems.filter((item) => selectedProductIds.includes(item.id));
-  }, [checkoutCartItemsIds, cartItems]);
-
-  const subtotal = rows.reduce(
-    (sum, row) => sum + row.product.base_price * row.quantity,
-    0,
-  );
-  const shippingFee = rows.length ? 22000 : 0;
-  const total = subtotal + shippingFee;
-
   const handlePlaceOrder = async () => {
     if (!rows.length) return;
     await createOrder({
@@ -98,7 +111,7 @@ const CheckoutPage = () => {
         phone_number: phone,
         address: address,
       },
-      coupon_id: null,
+      coupon_code: checkoutCouponCode,
     });
     clearcheckoutCartItemsIds();
     navigate({ to: "/order-success" });

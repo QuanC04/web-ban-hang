@@ -16,6 +16,7 @@ import {
 import { useCartStore } from "../store/cart";
 import { deleteCartItem, updateCartItem } from "../api/cart";
 import type { CartItem } from "../models/cart";
+import { validateCoupon } from "../api/coupon";
 
 const formatPrice = (value: number) =>
   new Intl.NumberFormat("vi-VN", {
@@ -57,12 +58,17 @@ const CartPage = () => {
     (state) => state.setCheckoutCartItemsIds,
   );
 
+  const setCheckoutCouponCode = useCartStore(
+    (state) => state.setCheckoutCouponCode,
+  );
+
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [quantityDrafts, setQuantityDrafts] = useState<Record<string, string>>(
     {},
   );
   const [voucherCode, setVoucherCode] = useState("");
   const [voucherApplied, setVoucherApplied] = useState(false);
+  const [discount, setDiscount] = useState(0);
 
   useEffect(() => {
     const loadCart = async () => {
@@ -72,15 +78,18 @@ const CartPage = () => {
   }, [fetchCart]);
 
   const shopGroups = groupCartItemsByShop(cartRows);
-  const allSelected = cartRows.length > 0 && selectedIds.length === cartRows.length;
-  const selectedCartRows = cartRows.filter((row) => selectedIds.includes(row.id));
+  const allSelected =
+    cartRows.length > 0 && selectedIds.length === cartRows.length;
+  const selectedCartRows = cartRows.filter((row) =>
+    selectedIds.includes(row.id),
+  );
   const subtotal = selectedCartRows.reduce(
     (sum, row) => sum + row.product.base_price * row.quantity,
     0,
   );
-  const shipping = subtotal === 0 || subtotal >= 150000 ? 0 : 30000;
-  const discount = 0;
-  const total = subtotal + shipping - discount;
+  const shipping = selectedCartRows.length ? 22000 : 0;
+
+  let total = subtotal + shipping - discount;
 
   const toggleSelectAll = () => {
     setSelectedIds(allSelected ? [] : cartRows.map((row) => row.id));
@@ -93,7 +102,9 @@ const CartPage = () => {
 
     if (!shopItemIds) return;
 
-    const allShopItemsSelected = shopItemIds.every((id) => selectedIds.includes(id));
+    const allShopItemsSelected = shopItemIds.every((id) =>
+      selectedIds.includes(id),
+    );
 
     setSelectedIds((prev) =>
       allShopItemsSelected
@@ -176,11 +187,18 @@ const CartPage = () => {
     await handleUpdateQuantity(itemId, nextQuantity);
   };
 
-  const handleApplyVoucher = () => {
+  const handleApplyVoucher = async () => {
     if (!voucherCode.trim()) return;
 
-    setVoucherApplied(true);
-    window.setTimeout(() => setVoucherApplied(false), 2000);
+    const result = await validateCoupon(voucherCode, subtotal);
+    if (result.success) {
+      setVoucherApplied(true);
+      setDiscount(result.data.discountAmount);
+      setCheckoutCouponCode(voucherCode);
+    } else {
+      setVoucherApplied(false);
+      alert(result.message || "Mã giảm giá không hợp lệ");
+    }
   };
 
   if (cartRows.length === 0) {
@@ -342,7 +360,10 @@ const CartPage = () => {
                               <button
                                 type="button"
                                 onClick={() =>
-                                  handleUpdateQuantity(item.id, item.quantity - 1)
+                                  handleUpdateQuantity(
+                                    item.id,
+                                    item.quantity - 1,
+                                  )
                                 }
                                 disabled={item.quantity <= 1}
                                 className="p-2 transition-colors hover:bg-[#f1f5f9] disabled:cursor-not-allowed disabled:opacity-50"
@@ -353,7 +374,8 @@ const CartPage = () => {
                                 type="text"
                                 inputMode="numeric"
                                 value={
-                                  quantityDrafts[item.id] ?? String(item.quantity)
+                                  quantityDrafts[item.id] ??
+                                  String(item.quantity)
                                 }
                                 onChange={(event) =>
                                   handleQuantityInputChange(
@@ -378,7 +400,10 @@ const CartPage = () => {
                               <button
                                 type="button"
                                 onClick={() =>
-                                  handleUpdateQuantity(item.id, item.quantity + 1)
+                                  handleUpdateQuantity(
+                                    item.id,
+                                    item.quantity + 1,
+                                  )
                                 }
                                 className="p-2 transition-colors hover:bg-[#f1f5f9]"
                                 aria-label="Tăng số lượng">
@@ -388,7 +413,12 @@ const CartPage = () => {
                           </div>
                         </div>
                         <p className="mt-2 hidden text-sm text-[#64748b] sm:block">
-                          Tổng: <span className="font-bold text-[#0f172a]">{formatPrice(item.product.base_price * item.quantity)}</span>
+                          Tổng:{" "}
+                          <span className="font-bold text-[#0f172a]">
+                            {formatPrice(
+                              item.product.base_price * item.quantity,
+                            )}
+                          </span>
                         </p>
                       </div>
                       <div className="text-right sm:hidden">
@@ -618,7 +648,7 @@ const OrderSummarySection = ({
         Tiến hành thanh toán
       </button>
       <p className="text-center text-sm text-[#64748b]">
-        Miễn phí vận chuyển cho đơn từ 150.000₫
+        Phí vận chuyển tiêu chuẩn 22.000₫
       </p>
     </div>
   </div>
