@@ -11,6 +11,7 @@ export const createCoupon = async (couponData: CouponPayload, userId: string) =>
         min_order_amount,
         usage_limit,
         per_user_limit,
+        end_date,
         status,
     } = couponData;
     const newCoupon = await prisma.coupon.create({
@@ -23,6 +24,7 @@ export const createCoupon = async (couponData: CouponPayload, userId: string) =>
             min_order_amount,
             usage_limit,
             per_user_limit,
+            end_date: new Date(end_date),
             status,
         },
     });

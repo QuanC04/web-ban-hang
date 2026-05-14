@@ -128,5 +128,6 @@ export interface CouponPayload {
     min_order_amount: number;
     usage_limit?: number;
     per_user_limit?: number;
+    end_date: string | Date;
     status: 'active' | 'inactive';
 }
