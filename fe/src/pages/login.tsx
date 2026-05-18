@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { login } from "../api/auth";
 import Cookies from "js-cookie";
 import { useUserStore } from "../store/user";
-import { useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import type { AuthData, LoginPayload } from "../models";
 
 const LoginForm = () => {
@@ -131,11 +131,11 @@ const LoginForm = () => {
 
         <p className="mt-8 text-center text-sm text-gray-600">
           Chưa có tài khoản?{" "}
-          <a
-            href="/register"
+          <Link
+            to="/register"
             className="text-blue-600 font-bold hover:underline">
             Đăng ký ngay
-          </a>
+          </Link>
         </p>
       </div>
     </div>
