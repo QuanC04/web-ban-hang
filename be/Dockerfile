@@ -2,18 +2,15 @@ FROM node:22-alpine
 
 WORKDIR /app
 
-RUN corepack enable
-
 COPY package.json pnpm-lock.yaml ./
-COPY prisma ./prisma
-COPY prisma.config.ts tsconfig.json ./
 
-RUN pnpm install --frozen-lockfile
+RUN corepack enable
+RUN pnpm install
 
-COPY src ./src
+COPY . .
 
-RUN pnpm build
+RUN pnpm prisma generate
 
 EXPOSE 3000
 
-CMD ["sh", "-c", "pnpm db:migrate && pnpm start"]
+CMD ["pnpm", "run", "dev"]

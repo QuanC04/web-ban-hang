@@ -10,11 +10,7 @@ const globalForPrisma = globalThis as unknown as {
     prisma: PrismaClient | undefined;
 };
 
-const adapterUrl = process.env.DATABASE_URL.startsWith('mysql://')
-    ? process.env.DATABASE_URL.replace('mysql://', 'mariadb://')
-    : process.env.DATABASE_URL;
-
-const adapter = new PrismaMariaDb(adapterUrl);
+const adapter = new PrismaMariaDb(process.env.DATABASE_URL);
 
 const prisma =
     globalForPrisma.prisma ??
