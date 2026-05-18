@@ -51,6 +51,7 @@ app.use('/api/market', marketProductRoute);
 app.use('/api/cart', cartRouter);
 app.use('/api/order', orderRouter);
 app.use('/api/coupon', couponRouter);
+app.get('/ping', (req, res) => res.send('pong'));
 
 // ==================== ERROR HANDLER ====================
 app.use(errorHandler);
