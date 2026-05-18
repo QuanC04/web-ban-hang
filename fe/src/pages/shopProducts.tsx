@@ -147,6 +147,15 @@ const ShopProductsPage = () => {
     currentPage * PRODUCTS_PER_PAGE,
     filteredProducts.length,
   );
+  const visiblePageNumbers = Array.from(
+    { length: totalPages },
+    (_, index) => index + 1,
+  ).filter(
+    (page) =>
+      page === currentPage ||
+      page === currentPage - 1 ||
+      page === currentPage + 1,
+  );
 
   useEffect(() => {
     setCurrentPage(1);
@@ -582,11 +591,19 @@ const ShopProductsPage = () => {
                       className="rounded-lg border border-[#e2e8f0] px-4 py-2 disabled:cursor-not-allowed disabled:opacity-50">
                       Trước
                     </button>
-                    <button
-                      type="button"
-                      className="rounded-lg bg-[#0f172a] px-4 py-2 text-white">
-                      {currentPage}/{totalPages}
-                    </button>
+                    {visiblePageNumbers.map((page) => (
+                      <button
+                        key={page}
+                        type="button"
+                        onClick={() => setCurrentPage(page)}
+                        className={`rounded-lg px-4 py-2 transition-colors ${
+                          page === currentPage
+                            ? "bg-[#fff7ed] font-bold text-[#0f172a]"
+                            : "text-[#64748b] hover:bg-[#f8fafc]"
+                        }`}>
+                        {page}
+                      </button>
+                    ))}
                     <button
                       type="button"
                       onClick={() => setCurrentPage((page) => page + 1)}
