@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Mail, Menu, Phone, Search, ShoppingCart, User } from "lucide-react";
+import { Mail, Menu, MessageCircle, Phone, Search, ShoppingCart, User } from "lucide-react";
 import Cookies from "js-cookie";
 import { useUserStore } from "../store/user";
 import { authLogout } from "../api/auth";
@@ -87,6 +87,13 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
 
               {user ? (
                 <>
+                  <Link
+                    to="/chat"
+                    className="hidden items-center gap-2 rounded-full px-4 py-2 transition hover:bg-[#fff7ed] md:flex"
+                    title="Tin nhắn">
+                    <MessageCircle className="h-5 w-5" />
+                    <span className="text-sm text-[#0f172a]">Chat</span>
+                  </Link>
                   <Link
                     to={profilePath}
                     className="hidden items-center gap-2 rounded-full px-4 py-2 transition hover:bg-[#fff7ed] md:flex"

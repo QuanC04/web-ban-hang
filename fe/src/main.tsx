@@ -17,6 +17,7 @@ import shopStoreRoute from "./routes/shop-store";
 import cartRoute from "./routes/cart";
 import checkoutRoute from "./routes/checkout";
 import orderSuccessRoute from "./routes/order-success";
+import chatRoute from "./routes/chat";
 
 const routeTree = rootRoute.addChildren([
   homeRoute,
@@ -32,6 +33,7 @@ const routeTree = rootRoute.addChildren([
   cartRoute,
   checkoutRoute,
   orderSuccessRoute,
+  chatRoute,
 ]);
 const router = createRouter({ routeTree });
 

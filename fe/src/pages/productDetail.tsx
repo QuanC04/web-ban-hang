@@ -19,7 +19,9 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { useCartStore } from "../store/cart";
 import { addToCart } from "../api/cart";
+import { startConversation } from "../api/message";
 import { getMarketProduct, getProductById } from "../api/product";
+import { useUserStore } from "../store/user";
 
 interface ProductDetailPageProps {
   productId: string;
@@ -140,6 +142,7 @@ const formatPrice = (value: number) =>
 
 const ProductDetailPage = ({ productId }: ProductDetailPageProps) => {
   const navigate = useNavigate();
+  const user = useUserStore((state) => state.user);
   const fetchCart = useCartStore((state) => state.fetchCart);
   const setCheckoutCartItemsIds = useCartStore(
     (state) => state.setCheckoutCartItemsIds,
@@ -238,6 +241,25 @@ const ProductDetailPage = ({ productId }: ProductDetailPageProps) => {
       setNotice("Không thể mua ngay sản phẩm này. Vui lòng thử lại.");
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleStartChat = async () => {
+    if (!user) {
+      navigate({ to: "/login" });
+      return;
+    }
+
+    if (!product.user?.id) {
+      setNotice("Không tìm thấy thông tin shop để bắt đầu chat.");
+      return;
+    }
+
+    try {
+      const conversation = await startConversation(product.user.id);
+      window.location.href = `/chat?conversationId=${conversation.id}`;
+    } catch {
+      setNotice("Không thể mở hội thoại. Vui lòng thử lại.");
     }
   };
 
@@ -510,6 +532,7 @@ const ProductDetailPage = ({ productId }: ProductDetailPageProps) => {
             </Link>
             <button
               type="button"
+              onClick={handleStartChat}
               className="flex flex-1 items-center justify-center gap-2 rounded-full bg-[#0f172a] px-6 py-3 font-medium text-white transition-colors hover:bg-[#334155] md:flex-none">
               <MessageCircle className="h-5 w-5" />
               <span>Chat ngay</span>
