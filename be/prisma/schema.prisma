@@ -7,12 +7,12 @@ datasource db {
 }
 
 model User {
-  id            String    @id @default(cuid())
-  username      String    @unique
-  email         String    @unique
+  id            String     @id @default(cuid())
+  username      String     @unique
+  email         String     @unique
   phone_number  String?
-  role          String    @default("customer")
-  created_at    DateTime  @default(now())
+  role          String     @default("customer")
+  created_at    DateTime   @default(now())
   password      String
   access_token  String?
   refresh_token String?
@@ -20,10 +20,14 @@ model User {
   full_name     String?
   avatar_key    String?
   addresses     Address[]
-  carttems          CartItem[]
+  carttems      CartItem[]
   coupons       Coupon[]
   orders        Order[]
   products      Product[]
+
+  buyer_conversations Conversation[] @relation("BuyerConversations")
+  shop_conversations  Conversation[] @relation("ShopConversations")
+  sent_messages       Message[]
 
   @@map("users")
 }
@@ -34,7 +38,7 @@ model Address {
   district      String
   street        String
   isdefault     Boolean  @default(false)
-  created_at      DateTime @default(now())
+  created_at    DateTime @default(now())
   name          String
   phone_number  String
   province_id   String?
@@ -68,7 +72,7 @@ model Product {
   base_price     Int
   stock_quantity Int            @default(0)
   status         String         @default("active")
-  created_at      DateTime       @default(now())
+  created_at     DateTime       @default(now())
   image_key      String?
   image_provider String         @default("cloudflare_r2")
   cart_items     CartItem[]
@@ -112,13 +116,13 @@ model Order {
   user_id               String
   coupon_id             String?
   total_before_discount Int
-   discount_amount       Int      @default(0)
-  shipping_fee          Int      @default(0)
+  discount_amount       Int         @default(0)
+  shipping_fee          Int         @default(0)
   status                String      @default("pending")
   payment_status        String      @default("unpaid")
   total_amount          Int
   shipping_address      String
-  created_at             DateTime    @default(now())
+  created_at            DateTime    @default(now())
   items                 OrderItem[]
   coupon                Coupon?     @relation(fields: [coupon_id], references: [id])
   user                  User        @relation(fields: [user_id], references: [id])
@@ -159,8 +163,8 @@ model Coupon {
   created_at          DateTime @default(now())
   updated_at          DateTime @updatedAt
 
-  user                User     @relation(fields: [user_id], references: [id])
-  orders              Order[]
+  user   User    @relation(fields: [user_id], references: [id])
+  orders Order[]
 
   @@index([user_id], map: "coupons_user_id_fkey")
   @@map("coupons")
@@ -172,9 +176,58 @@ model Payment {
   payment_method String
   status         String    @default("pending")
   paid_at        DateTime?
-  created_at       DateTime  @default(now())
+  created_at     DateTime  @default(now())
   order          Order     @relation(fields: [order_id], references: [id])
 
   @@index([order_id], map: "payments_order_id_fkey")
   @@map("payments")
+}
+
+enum ConversationStatus {
+  open
+  closed
+}
+
+enum MessageSenderType {
+  buyer
+  shop
+}
+
+model Conversation {
+  id                String             @id @default(cuid())
+  buyer_id          String
+  shop_id           String
+  status            ConversationStatus @default(open)
+  last_message_text String?
+  last_message_at   DateTime?
+  created_at        DateTime           @default(now())
+  updated_at        DateTime           @updatedAt
+
+  buyer    User      @relation("BuyerConversations", fields: [buyer_id], references: [id])
+  shop     User      @relation("ShopConversations", fields: [shop_id], references: [id])
+  messages Message[]
+
+  @@unique([buyer_id, shop_id])
+  @@index([buyer_id])
+  @@index([shop_id])
+  @@index([updated_at])
+  @@map("conversations")
+}
+
+model Message {
+  id              String            @id @default(cuid())
+  conversation_id String
+  sender_id       String
+  sender_type     MessageSenderType
+  content         String
+  is_read         Boolean           @default(false)
+  created_at      DateTime          @default(now())
+
+  conversation Conversation @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
+  sender       User         @relation(fields: [sender_id], references: [id])
+
+  @@index([conversation_id])
+  @@index([sender_id])
+  @@index([created_at])
+  @@map("messages")
 }
