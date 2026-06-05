@@ -1,11 +1,12 @@
 import { useState, type ReactNode } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Mail, Menu, MessageCircle, Phone, Search, ShoppingCart, User } from "lucide-react";
+import { Mail, Menu, Phone, Search, ShoppingCart, User } from "lucide-react";
 import Cookies from "js-cookie";
 import { useUserStore } from "../store/user";
 import { authLogout } from "../api/auth";
 import { useSearchStore } from "../store/search";
 import { useCartStore } from "../store/cart";
+import ChatWidget from "./chatWidget";
 
 interface SiteLayoutProps {
   children: ReactNode;
@@ -88,13 +89,6 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
               {user ? (
                 <>
                   <Link
-                    to="/chat"
-                    className="hidden items-center gap-2 rounded-full px-4 py-2 transition hover:bg-[#fff7ed] md:flex"
-                    title="Tin nhắn">
-                    <MessageCircle className="h-5 w-5" />
-                    <span className="text-sm text-[#0f172a]">Chat</span>
-                  </Link>
-                  <Link
                     to={profilePath}
                     className="hidden items-center gap-2 rounded-full px-4 py-2 transition hover:bg-[#fff7ed] md:flex"
                     title="Trang cá nhân">
@@ -168,6 +162,7 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
       </header>
 
       <div className="flex-1">{children}</div>
+      <ChatWidget />
 
       <footer className="mt-auto border-t border-[#e2e8f0] bg-white">
         <div className="mx-auto max-w-7xl px-4 py-12">
