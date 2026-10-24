@@ -1,8 +1,9 @@
 import prisma from '../../lib/prisma';
+import { AppError } from '../../middleware/errorHandler';
 
 const ensureUserId = (userId?: string) => {
     if (!userId) {
-        throw new Error('Unauthorized');
+        throw new AppError('Bạn chưa đăng nhập', 401, 'UNAUTHORIZED');
     }
 };
 
@@ -109,7 +110,7 @@ export const deleteAddress = async (addressId: string, userId: string) => {
     });
 
     if (!address || address.user_id !== userId) {
-        throw new Error('Address not found or unauthorized');
+        throw new AppError('Không tìm thấy địa chỉ', 404, 'ADDRESS_NOT_FOUND');
     }
 
     await prisma.$transaction(async (tx) => {
@@ -144,7 +145,7 @@ export const updateAddress = async (addressId: string, userId: string, address: 
     });
 
     if (!existingAddress || existingAddress.user_id !== userId) {
-        throw new Error('Address not found or unauthorized');
+        throw new AppError('Không tìm thấy địa chỉ', 404, 'ADDRESS_NOT_FOUND');
     }
 
     const { name, phone_number, district, province_id, province_name, street, isdefault } = address;

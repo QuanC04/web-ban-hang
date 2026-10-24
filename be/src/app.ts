@@ -2,6 +2,8 @@ import 'dotenv/config';
 import express, { Application } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import swaggerUi from 'swagger-ui-express';
+import { swaggerSpec } from './config/swagger';
 
 import { errorHandler } from './middleware/errorHandler';
 import { successResponse } from './utils/response';
@@ -26,13 +28,20 @@ app.use(
         origin:
             process.env.CLIENT_URL ||
             'http://localhost:5173' ||
-            'https://web-ban-hang-zeta.vercel.app',
+            'https://web-ban-hang-zeta.vercel.app' ||
+            'http://localhost:5000',
         credentials: true,
     }),
 );
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
+app.get('/api/docs.json', (req, res) => {
+    res.setHeader('Content-Type', 'application/json');
+    res.send(swaggerSpec);
+});
 
 // ==================== ROUTES ====================
 app.get('/api/health', (req, res) => {

@@ -118,6 +118,15 @@ export interface OrderPayload {
     cartItemsIds: string[];
     shipping_address: AddressPayload;
     coupon_code?: string | null;
+    payment_method: 'cod' | 'bank';
+}
+
+export interface BuyNowPayload {
+    productId: string;
+    quantity: number;
+    shipping_address: AddressPayload;
+    coupon_code?: string | null;
+    payment_method: 'cod' | 'bank';
 }
 
 export interface CouponPayload {
@@ -130,4 +139,16 @@ export interface CouponPayload {
     per_user_limit?: number;
     end_date: string | Date;
     status: 'active' | 'inactive';
+}
+
+export interface ReviewPayload {
+    order_item_id: string;
+    rating: number;
+    comment?: string;
+}
+
+export interface GetProductReviewsQuery {
+    page?: number;
+    limit?: number;
+    rating?: number;
 }

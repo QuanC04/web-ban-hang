@@ -1,4 +1,5 @@
 import prisma from '../../lib/prisma';
+import { AppError } from '../../middleware/errorHandler';
 import { CartItemPayload } from '../../models';
 
 export const createCartItem = async (userId: string, cartItem: CartItemPayload) => {
@@ -7,14 +8,14 @@ export const createCartItem = async (userId: string, cartItem: CartItemPayload) 
         where: { id: productId },
     });
     if (quantity <= 0) {
-        throw new Error('Quantity must be greater than 0');
+        throw new AppError('Số lượng phải lớn hơn 0', 400, 'INVALID_QUANTITY');
     }
     if (!product) {
-        throw new Error('Product not found');
+        throw new AppError('Sản phẩm không tồn tại', 404, 'PRODUCT_NOT_FOUND');
     }
 
     if (product.status !== 'active') {
-        throw new Error('Product is not available');
+        throw new AppError('Sản phẩm không khả dụng', 400, 'PRODUCT_NOT_AVAILABLE');
     }
     const existingCartItem = await prisma.cartItem.findFirst({
         where: {
@@ -24,7 +25,7 @@ export const createCartItem = async (userId: string, cartItem: CartItemPayload) 
     });
     const nextQuantity = existingCartItem ? existingCartItem.quantity + quantity : quantity;
     if (nextQuantity > product?.stock_quantity) {
-        throw new Error('Insufficient stock');
+        throw new AppError('Sản phẩm không đủ hàng', 409, 'INSUFFICIENT_STOCK');
     }
     if (existingCartItem) {
         const updated = await prisma.cartItem.update({
@@ -54,20 +55,20 @@ export const updateCartItem = async (
         where: { id: cartItemId, user_id: userId },
     });
     if (!existingCartItem) {
-        throw new Error('Cart item not found or unauthorized');
+        throw new AppError('Không tìm thấy sản phẩm trong giỏ hàng', 404, 'CART_ITEM_NOT_FOUND');
     }
     const product = await prisma.product.findUnique({
         where: { id: existingCartItem.product_id },
     });
     if (!product) {
-        throw new Error('Associated product not found');
+        throw new AppError('Sản phẩm không tồn tại', 404, 'PRODUCT_NOT_FOUND');
     }
     const nextQuantity = hasQuantity
         ? payload.quantity!
         : existingCartItem.quantity + (hasDelta ? payload.delta! : 0);
 
     if (nextQuantity > product.stock_quantity) {
-        throw new Error('Insufficient stock');
+        throw new AppError('Sản phẩm không đủ hàng', 409, 'INSUFFICIENT_STOCK');
     }
     const updated = await prisma.cartItem.update({
         where: { id: cartItemId },
@@ -81,7 +82,7 @@ export const deleteCartItem = async (cartItemId: string, userId: string) => {
         where: { id: cartItemId, user_id: userId },
     });
     if (!existingCartItem) {
-        throw new Error('Cart item not found or unauthorized');
+        throw new AppError('Không tìm thấy sản phẩm trong giỏ hàng', 404, 'CART_ITEM_NOT_FOUND');
     }
     await prisma.cartItem.delete({
         where: { id: cartItemId },

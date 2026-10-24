@@ -24,12 +24,31 @@ model User {
   coupons       Coupon[]
   orders        Order[]
   products      Product[]
+  sent_messages       Message[]
+  reviews Review[]
+  otp Otp[]
 
   buyer_conversations Conversation[] @relation("BuyerConversations")
   shop_conversations  Conversation[] @relation("ShopConversations")
-  sent_messages       Message[]
+
 
   @@map("users")
+}
+
+model Otp {
+  id         String     @id @default(cuid())
+  user_id    String
+  code_hash  String
+  expires_at DateTime
+  attempts   Int        @default(0)
+  consumed_at DateTime?
+  created_at DateTime   @default(now())
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id, created_at])
+  @@index([expires_at])
+  @@map("otp")
 }
 
 model Address {
@@ -78,6 +97,7 @@ model Product {
   cart_items     CartItem[]
   order_items    OrderItem[]
   images         ProductImage[]
+  reviews        Review[]
   category       Category       @relation(fields: [category_id], references: [id])
   user           User           @relation(fields: [user_id], references: [id])
 
@@ -139,6 +159,7 @@ model OrderItem {
   product_id        String
   price_at_purchase Int
   quantity          Int
+  review            Review?
   order             Order   @relation(fields: [order_id], references: [id])
   product           Product @relation(fields: [product_id], references: [id])
 
@@ -230,4 +251,22 @@ model Message {
   @@index([sender_id])
   @@index([created_at])
   @@map("messages")
+}
+
+model Review {
+  id            String   @id @default(cuid())
+  user_id       String
+  product_id    String
+  order_item_id String @unique
+  rating        Int
+  comment       String?
+  created_at    DateTime @default(now())
+  user      User      @relation(fields: [user_id], references: [id])
+  product   Product   @relation(fields: [product_id], references: [id])
+  orderItem OrderItem @relation(fields: [order_item_id], references: [id])
+
+  @@index([user_id])
+  @@index([product_id])
+  @@index([order_item_id])
+  @@map("reviews")
 }

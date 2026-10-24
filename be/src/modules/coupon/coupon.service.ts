@@ -1,5 +1,5 @@
 import prisma from '../../lib/prisma';
-import { asyncHandler } from '../../middleware/errorHandler';
+import { AppError } from '../../middleware/errorHandler';
 import { CouponPayload } from '../../models';
 
 export const createCoupon = async (couponData: CouponPayload, userId: string) => {
@@ -33,24 +33,26 @@ export const createCoupon = async (couponData: CouponPayload, userId: string) =>
 
 export const validateCouponData = async (code: string, userId: string, subtotal: number) => {
     if (!code || typeof code !== 'string') {
-        throw new Error('Mã giảm giá không hợp lệ');
+        throw new AppError('Mã giảm giá không hợp lệ', 400, 'INVALID_COUPON');
     }
     const existingCoupon = await prisma.coupon.findUnique({
         where: { code },
     });
     if (!existingCoupon) {
-        throw new Error('Mã giảm giá không hợp lệ');
+        throw new AppError('Mã giảm giá không hợp lệ', 400, 'INVALID_COUPON');
     }
     if (existingCoupon.status !== 'active') {
-        throw new Error('Mã giảm giá không hợp lệ');
+        throw new AppError('Mã giảm giá không hợp lệ', 400, 'INVALID_COUPON');
     }
     const now = new Date();
     if (existingCoupon.end_date && existingCoupon.end_date < now) {
-        throw new Error('Mã giảm giá đã hết hạn');
+        throw new AppError('Mã giảm giá đã hết hạn', 400, 'COUPON_EXPIRED');
     }
     if (subtotal < existingCoupon.min_order_amount) {
-        throw new Error(
+        throw new AppError(
             `Đơn hàng phải có giá trị tối thiểu là ${existingCoupon.min_order_amount} để sử dụng mã giảm giá này`,
+            400,
+            'COUPON_MIN_ORDER_NOT_MET',
         );
     }
     if (existingCoupon.usage_limit) {
@@ -60,7 +62,7 @@ export const validateCouponData = async (code: string, userId: string, subtotal:
             },
         });
         if (totalUsage >= existingCoupon.usage_limit) {
-            throw new Error('Mã giảm giá đã đạt giới hạn sử dụng');
+            throw new AppError('Mã giảm giá đã đạt giới hạn sử dụng', 409, 'COUPON_USAGE_LIMIT_REACHED');
         }
     }
     const userUsage = await prisma.order.count({
@@ -70,7 +72,11 @@ export const validateCouponData = async (code: string, userId: string, subtotal:
         },
     });
     if (existingCoupon.per_user_limit && userUsage >= existingCoupon.per_user_limit) {
-        throw new Error('Bạn đã sử dụng mã giảm giá này quá số lần cho phép');
+        throw new AppError(
+            'Bạn đã sử dụng mã giảm giá này quá số lần cho phép',
+            409,
+            'COUPON_USER_LIMIT_REACHED',
+        );
     }
 
     let discountAmount = 0;

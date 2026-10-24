@@ -28,6 +28,8 @@ export const getMarketProductById = async (productId: string) => {
             name: true,
             base_price: true,
             description: true,
+            status: true,
+            stock_quantity: true,
             image_url: true,
             created_at: true,
             user: {

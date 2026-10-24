@@ -1,10 +1,15 @@
 import { Request, Response, NextFunction } from 'express';
 import { errorResponse } from '../utils/response';
 
-interface AppError {
-    statusCode?: number;
-    message?: string;
-    code?: string;
+export class AppError extends Error {
+    statusCode: number;
+    code: string;
+
+    constructor(message: string, statusCode = 500, code = 'INTERNAL_SERVER_ERROR') {
+        super(message);
+        this.statusCode = statusCode;
+        this.code = code;
+    }
 }
 
 export const asyncHandler = (fn: Function) => {

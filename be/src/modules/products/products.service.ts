@@ -1,4 +1,5 @@
 import prisma from '../../lib/prisma';
+import { AppError } from '../../middleware/errorHandler';
 import { ProductPayload } from '../../models';
 import { deleteFileFromR2 } from '../upload/upload.service';
 
@@ -7,7 +8,7 @@ export const addProduct = async (userId: string, productData: ProductPayload) =>
         where: { id: userId },
     });
     if (!authUser) {
-        throw new Error('Unauthorized');
+        throw new AppError('Bạn chưa đăng nhập', 401, 'UNAUTHORIZED');
     }
     const { id, name, description, category_id, base_price, stock_quantity, image_url, image_key } =
         productData;
@@ -50,7 +51,7 @@ export const updateProduct = async (productId: string, userId: string, productDa
     });
 
     if (!existingProduct) {
-        throw new Error('Unauthorized');
+        throw new AppError('Không tìm thấy sản phẩm hoặc bạn không có quyền', 404, 'PRODUCT_NOT_FOUND');
     }
 
     const previousImageKey = existingProduct.image_key?.trim();
@@ -128,14 +129,22 @@ export const getProductById = async (productId: string) => {
 };
 
 export const deleteProduct = async (productId: string, userId: string) => {
+    const existingProduct = await prisma.product.findFirst({
+        where: {
+            id: productId,
+            user_id: userId,
+        },
+    });
+
+    if (!existingProduct) {
+        throw new AppError('Không tìm thấy sản phẩm hoặc bạn không có quyền', 404, 'PRODUCT_NOT_FOUND');
+    }
+
     const deletedProduct = await prisma.product.delete({
         where: {
             id: productId,
             user_id: userId,
         },
     });
-    if (!deletedProduct) {
-        throw new Error('Unauthorized');
-    }
     return deletedProduct;
 };

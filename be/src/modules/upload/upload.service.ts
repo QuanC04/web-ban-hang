@@ -1,5 +1,6 @@
 import { DeleteObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 import { BUCKET_NAME, PUBLIC_URL, r2Client } from '../../lib/r2';
+import { AppError } from '../../middleware/errorHandler';
 import { UploadResult } from '../../models';
 
 export const uploadFileToR2 = async (file: Express.Multer.File): Promise<UploadResult> => {
@@ -24,7 +25,7 @@ export const uploadFileToR2 = async (file: Express.Multer.File): Promise<UploadR
         };
     } catch (error) {
         console.error('R2 Upload Error:', error);
-        throw new Error('Không thể upload ảnh lên Cloudflare R2');
+        throw new AppError('Không thể upload ảnh lên Cloudflare R2', 500, 'R2_UPLOAD_FAILED');
     }
 };
 
@@ -37,6 +38,6 @@ export const deleteFileFromR2 = async (key: string): Promise<void> => {
         await r2Client.send(command);
     } catch (error) {
         console.error('R2 Delete Error:', error);
-        throw new Error('Không thể xóa ảnh từ Cloudflare R2');
+        throw new AppError('Không thể xóa ảnh từ Cloudflare R2', 500, 'R2_DELETE_FAILED');
     }
 };
