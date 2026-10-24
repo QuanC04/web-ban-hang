@@ -45,7 +45,9 @@ const ChatWidget = () => {
   const [isLoadingConversations, setIsLoadingConversations] = useState(false);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [isSending, setIsSending] = useState(false);
-  const [hasNewMessage, setHasNewMessage] = useState(false);
+  const [unreadConversationIds, setUnreadConversationIds] = useState<string[]>(
+    [],
+  );
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -98,6 +100,8 @@ const ChatWidget = () => {
     if (!socket.connected) socket.connect();
 
     const handleNewMessage = (message: ChatMessage) => {
+      const isIncomingMessage = message.sender_id !== user.id;
+
       setConversations((current) => {
         const hasConversation = current.some(
           (conversation) => conversation.id === message.conversation_id,
@@ -122,9 +126,19 @@ const ChatWidget = () => {
           return "open";
         }
 
-        if (currentMode === "minimized") setHasNewMessage(true);
         return currentMode;
       });
+
+      if (
+        isIncomingMessage &&
+        message.conversation_id !== selectedConversationId
+      ) {
+        setUnreadConversationIds((current) =>
+          current.includes(message.conversation_id)
+            ? current
+            : [...current, message.conversation_id],
+        );
+      }
 
       if (message.conversation_id !== selectedConversationId) return;
 
@@ -148,6 +162,13 @@ const ChatWidget = () => {
   }, [selectedConversationId]);
 
   useEffect(() => {
+    if (!selectedConversationId) return;
+    setUnreadConversationIds((current) =>
+      current.filter((id) => id !== selectedConversationId),
+    );
+  }, [selectedConversationId]);
+
+  useEffect(() => {
     if (mode !== "open") return;
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, mode]);
@@ -164,8 +185,9 @@ const ChatWidget = () => {
 
   const openWidget = () => {
     setMode("open");
-    setHasNewMessage(false);
   };
+
+  const unreadCount = unreadConversationIds.length;
 
   const handleSendMessage = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -226,11 +248,12 @@ const ChatWidget = () => {
         aria-label="Mở tin nhắn">
         <span className="relative">
           <MessageCircle className="h-5 w-5" />
-          {hasNewMessage ? (
-            <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-[#fcd34d] ring-2 ring-[#0f172a]" />
+          {unreadCount > 0 ? (
+            <span className="absolute -right-3 -top-3 grid min-h-5 min-w-5 place-items-center rounded-full bg-red-600 px-1.5 text-[11px] font-black leading-none text-white ring-2 ring-[#0f172a]">
+              {unreadCount > 9 ? "9+" : unreadCount}
+            </span>
           ) : null}
         </span>
-        Tin nhắn
       </button>
     );
   }
@@ -411,17 +434,31 @@ const ChatWidget = () => {
                   type="button"
                   onClick={() => {
                     setSelectedConversationId(conversation.id);
-                    setHasNewMessage(false);
+                    setUnreadConversationIds((current) =>
+                      current.filter((id) => id !== conversation.id),
+                    );
                   }}
-                  className="flex w-full items-start gap-3 border-b border-[#f1f5f9] px-4 py-3 text-left transition hover:bg-[#fff7ed]">
+                  className={`flex w-full items-start gap-3 border-b border-[#f1f5f9] px-4 py-3 text-left transition hover:bg-[#fff7ed] ${
+                    unreadConversationIds.includes(conversation.id)
+                      ? "bg-white shadow-[inset_0_0_0_1px_rgba(15,23,42,0.08)]"
+                      : "bg-transparent"
+                  }`}>
                   <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#0f172a] text-sm font-bold text-[#fcd34d]">
                     {getDisplayName(partner).charAt(0).toUpperCase()}
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-bold text-[#0f172a]">
+                    <span className="flex items-center gap-2 truncate text-sm font-bold text-[#0f172a]">
+                      {unreadConversationIds.includes(conversation.id) ? (
+                        <span className="h-2 w-2 shrink-0 rounded-full bg-red-600" />
+                      ) : null}
                       {getDisplayName(partner)}
                     </span>
-                    <span className="mt-1 block truncate text-sm text-[#64748b]">
+                    <span
+                      className={`mt-1 block truncate text-sm ${
+                        unreadConversationIds.includes(conversation.id)
+                          ? "font-semibold text-[#0f172a]"
+                          : "text-[#64748b]"
+                      }`}>
                       {conversation.last_message_text || "Bắt đầu hội thoại"}
                     </span>
                   </span>

@@ -1,13 +1,13 @@
-import { MapPin, Shield, User } from "lucide-react";
+import { MapPin, Package, Shield, User } from "lucide-react";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { type ReactNode } from "react";
 import { useUserStore } from "../store/user";
 
 type ProfileNavItem = {
-  key: "overview" | "profile" | "address" | "security";
+  key: "overview" | "profile" | "address" | "security" | "orders";
   label: string;
   icon: typeof User;
-  path: "/profile" | "/profile/address" | "/profile/security";
+  path: "/profile" | "/profile/address" | "/profile/security" | "/profile/orders";
 };
 
 type ProfileLayoutProps = {
@@ -21,6 +21,12 @@ const navItems: ProfileNavItem[] = [
     label: "Thông tin cá nhân",
     icon: User,
     path: "/profile",
+  },
+  {
+    key: "orders",
+    label: "Đơn hàng của tôi",
+    icon: Package,
+    path: "/profile/orders",
   },
   {
     key: "address",

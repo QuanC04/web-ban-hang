@@ -21,9 +21,9 @@ const OrderSuccessPage = () => {
             Tiếp tục mua sắm
           </Link>
           <Link
-            to="/cart"
+            to="/profile/orders"
             className="rounded-full border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-100">
-            Quay lại giỏ hàng
+            Xem đơn hàng
           </Link>
         </div>
       </section>

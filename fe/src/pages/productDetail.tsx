@@ -22,6 +22,7 @@ import { addToCart } from "../api/cart";
 import { startConversation } from "../api/message";
 import { getMarketProduct, getProductById } from "../api/product";
 import { useUserStore } from "../store/user";
+import ReviewModal from "../component/reviewModal";
 
 interface ProductDetailPageProps {
   productId: string;
@@ -144,8 +145,8 @@ const ProductDetailPage = ({ productId }: ProductDetailPageProps) => {
   const navigate = useNavigate();
   const user = useUserStore((state) => state.user);
   const fetchCart = useCartStore((state) => state.fetchCart);
-  const setCheckoutCartItemsIds = useCartStore(
-    (state) => state.setCheckoutCartItemsIds,
+  const setCheckoutBuyNowItem = useCartStore(
+    (state) => state.setCheckoutBuyNowItem,
   );
   const [product, setProduct] = useState<Awaited<
     ReturnType<typeof getProductById>
@@ -157,6 +158,8 @@ const ProductDetailPage = ({ productId }: ProductDetailPageProps) => {
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [notice, setNotice] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  const [reviewList, setReviewList] = useState(reviews);
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -174,7 +177,10 @@ const ProductDetailPage = ({ productId }: ProductDetailPageProps) => {
 
   const images = useMemo(() => {
     if (!product?.image_url) return fallbackImages;
-    return [product.image_url, ...fallbackImages.filter((image) => image !== product.image_url)].slice(0, 4);
+    return [
+      product.image_url,
+      ...fallbackImages.filter((image) => image !== product.image_url),
+    ].slice(0, 4);
   }, [product?.image_url]);
 
   if (!product) {
@@ -191,7 +197,7 @@ const ProductDetailPage = ({ productId }: ProductDetailPageProps) => {
             Quay về trang chủ
           </button>
         </div>
-      </main>
+    </main>
     );
   }
 
@@ -220,28 +226,19 @@ const ProductDetailPage = ({ productId }: ProductDetailPageProps) => {
     }
   };
 
-  const handleBuyNow = async () => {
-    if (!isAvailable) return;
-
-    try {
-      setIsSubmitting(true);
-      setNotice("");
-      const response = await addToCart(product.id, quantity);
-      const cartItemId = response.data?.id;
-      await fetchCart();
-
-      if (!cartItemId) {
-        navigate({ to: "/cart" });
-        return;
-      }
-
-      setCheckoutCartItemsIds([cartItemId]);
-      navigate({ to: "/checkout" });
-    } catch {
-      setNotice("Không thể mua ngay sản phẩm này. Vui lòng thử lại.");
-    } finally {
-      setIsSubmitting(false);
+  const handleBuyNow = () => {
+    if (!user) {
+      navigate({ to: "/login" });
+      return;
     }
+    if (!isAvailable || !product) return;
+    // Xóa lựa chọn từ giỏ hàng và đặt dữ liệu mua ngay
+
+    setCheckoutBuyNowItem({
+      product: product,
+      quantity: quantity,
+    });
+    navigate({ to: "/checkout" });
   };
 
   const handleStartChat = async () => {
@@ -436,7 +433,9 @@ const ProductDetailPage = ({ productId }: ProductDetailPageProps) => {
                 <button
                   type="button"
                   onClick={() =>
-                    setQuantity((prev) => Math.min(stockQuantity || prev + 1, prev + 1))
+                    setQuantity((prev) =>
+                      Math.min(stockQuantity || prev + 1, prev + 1),
+                    )
                   }
                   disabled={!stockQuantity || quantity >= stockQuantity}
                   className="p-3 transition-colors hover:bg-[#f1f5f9] disabled:cursor-not-allowed disabled:opacity-50"
@@ -445,7 +444,10 @@ const ProductDetailPage = ({ productId }: ProductDetailPageProps) => {
                 </button>
               </div>
               <span className="text-[#64748b]">
-                <span className="font-medium text-[#0f172a]">{stockQuantity}</span> sản phẩm có sẵn
+                <span className="font-medium text-[#0f172a]">
+                  {stockQuantity}
+                </span>{" "}
+                sản phẩm có sẵn
               </span>
             </div>
           </div>
@@ -518,7 +520,8 @@ const ProductDetailPage = ({ productId }: ProductDetailPageProps) => {
                 <span>156 sản phẩm</span>
                 <span className="hidden sm:inline">|</span>
                 <span>
-                  {product.user?.addresses?.[0]?.province_name || "Không xác định"}
+                  {product.user?.addresses?.[0]?.province_name ||
+                    "Không xác định"}
                 </span>
               </div>
             </div>
@@ -547,7 +550,10 @@ const ProductDetailPage = ({ productId }: ProductDetailPageProps) => {
         </h2>
         <div className="mb-8 grid grid-cols-1 gap-x-8 gap-y-4 md:grid-cols-2">
           <ProductSpec label="Danh mục" value={categoryName} />
-          <ProductSpec label="Tình trạng" value={isAvailable ? "Đang bán" : "Không khả dụng"} />
+          <ProductSpec
+            label="Tình trạng"
+            value={isAvailable ? "Đang bán" : "Không khả dụng"}
+          />
           <ProductSpec label="Kho" value={`${stockQuantity} sản phẩm`} />
           <ProductSpec label="Cửa hàng" value={shopName} />
         </div>
@@ -565,10 +571,22 @@ const ProductDetailPage = ({ productId }: ProductDetailPageProps) => {
         <h2 className="mb-6 text-2xl font-bold text-[#0f172a]">
           Đánh giá sản phẩm
         </h2>
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+          <p className="text-sm text-[#64748b]">
+            Có {reviewList.length} đánh giá từ khách hàng
+          </p>
+          <button
+            type="button"
+            onClick={() => setIsReviewModalOpen(true)}
+            className="flex items-center gap-2 rounded-full bg-[#0f172a] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#334155]">
+            <Star className="h-4 w-4 fill-[#fcd34d] text-[#fcd34d]" />
+            <span>Viết đánh giá</span>
+          </button>
+        </div>
         <RatingsSummary />
         <div className="mt-8 space-y-6">
-          {reviews.map((review) => (
-            <ReviewCard key={`${review.userName}-${review.date}`} {...review} />
+          {reviewList.map((review, idx) => (
+            <ReviewCard key={`${review.userName}-${review.date}-${idx}`} {...review} />
           ))}
         </div>
         <div className="mt-6 text-center">
@@ -590,6 +608,18 @@ const ProductDetailPage = ({ productId }: ProductDetailPageProps) => {
           ))}
         </div>
       </section>
+      <ReviewModal
+        isOpen={isReviewModalOpen}
+        onClose={() => setIsReviewModalOpen(false)}
+        productId={product.id}
+        productName={product.name}
+        productImage={product.image_url || undefined}
+        orderItemId="mock_order_item_001"
+        useRealApi={false}
+        onSuccess={(newReview) => {
+          setReviewList((prev) => [newReview, ...prev]);
+        }}
+      />
     </main>
   );
 };
@@ -635,7 +665,12 @@ interface VoucherCardProps {
   minOrder: number;
 }
 
-const VoucherCard = ({ code, discount, description, minOrder }: VoucherCardProps) => (
+const VoucherCard = ({
+  code,
+  discount,
+  description,
+  minOrder,
+}: VoucherCardProps) => (
   <div className="flex items-center justify-between rounded-xl border border-[#fcd34d] bg-[#fff7ed] p-3">
     <div>
       <p className="font-bold text-[#0f172a]">{discount}</p>
@@ -654,13 +689,30 @@ const ShippingInfoCard = () => (
     <h3 className="mb-3 font-bold text-[#0f172a]">Thông tin vận chuyển</h3>
     <div className="space-y-3">
       {[
-        { type: "Giao hàng tiêu chuẩn", price: 30000, estimatedDays: "2-3 ngày", icon: Truck },
-        { type: "Giao hàng nhanh", price: 50000, estimatedDays: "Trong 24 giờ", icon: Clock },
-        { type: "Miễn phí vận chuyển", price: 0, estimatedDays: "3-5 ngày", icon: Award },
+        {
+          type: "Giao hàng tiêu chuẩn",
+          price: 30000,
+          estimatedDays: "2-3 ngày",
+          icon: Truck,
+        },
+        {
+          type: "Giao hàng nhanh",
+          price: 50000,
+          estimatedDays: "Trong 24 giờ",
+          icon: Clock,
+        },
+        {
+          type: "Miễn phí vận chuyển",
+          price: 0,
+          estimatedDays: "3-5 ngày",
+          icon: Award,
+        },
       ].map((option) => {
         const Icon = option.icon;
         return (
-          <div key={option.type} className="flex items-center justify-between gap-4">
+          <div
+            key={option.type}
+            className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#fff7ed]">
                 <Icon className="h-5 w-5 text-[#b45309]" />

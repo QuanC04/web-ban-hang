@@ -18,11 +18,18 @@ import cartRoute from "./routes/cart";
 import checkoutRoute from "./routes/checkout";
 import orderSuccessRoute from "./routes/order-success";
 import chatRoute from "./routes/chat";
+import orderHistoryRoute from "./routes/order-history";
+import verifyOtpRoute from "./routes/verify-otp";
+import resetPasswordRoute from "./routes/reset-password";
+import forgotPasswordRoute from "./routes/forgot-password";
 
 const routeTree = rootRoute.addChildren([
   homeRoute,
   registerRoute,
   loginRoute,
+  forgotPasswordRoute,
+  verifyOtpRoute,
+  resetPasswordRoute,
   profileRoute,
   profileAddressRoute,
   profileSecurityRoute,
@@ -34,6 +41,7 @@ const routeTree = rootRoute.addChildren([
   checkoutRoute,
   orderSuccessRoute,
   chatRoute,
+  orderHistoryRoute,
 ]);
 const router = createRouter({ routeTree });
 

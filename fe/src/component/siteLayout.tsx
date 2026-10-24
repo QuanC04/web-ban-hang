@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { Mail, Menu, Phone, Search, ShoppingCart, User } from "lucide-react";
 import Cookies from "js-cookie";
 import { useUserStore } from "../store/user";
@@ -23,12 +23,15 @@ const getInitials = (name?: string) => {
 
 const SiteLayout = ({ children }: SiteLayoutProps) => {
   const navigate = useNavigate();
+  const pathname = useRouterState({
+    select: (state) => state.location.pathname,
+  });
   const [queryInput, setQueryInput] = useState("");
   const setQuery = useSearchStore((state) => state.setQuery);
   const cartCount = useCartStore((state) => state.cartCount);
   const { user, logout } = useUserStore();
   const profilePath =
-    user?.role?.toLowerCase() === "shop" ? "/shop" : "/profile";
+    user?.role?.toLowerCase() === "admin" ? "/shop" : "/profile";
 
   const handleLogout = async () => {
     try {
@@ -162,7 +165,7 @@ const SiteLayout = ({ children }: SiteLayoutProps) => {
       </header>
 
       <div className="flex-1">{children}</div>
-      <ChatWidget />
+      {pathname !== "/chat" ? <ChatWidget /> : null}
 
       <footer className="mt-auto border-t border-[#e2e8f0] bg-white">
         <div className="mx-auto max-w-7xl px-4 py-12">

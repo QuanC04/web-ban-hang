@@ -9,7 +9,6 @@ const SignupForm = () => {
     email: "",
     password: "",
     confirmPassword: "",
-    role: "USER",
   });
 
   const [showPassword, setShowPassword] = useState(false);
@@ -108,15 +107,6 @@ const SignupForm = () => {
             <label className="block text-sm font-medium text-gray-700">
               Vai trò
             </label>
-            <select
-              name="role"
-              required
-              className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 outline-none transition bg-white"
-              onChange={handleChange}
-              value={formData.role}>
-              <option value="Customer">Customer</option>
-              <option value="Shop">Shop</option>
-            </select>
           </div>
 
           {/* Submit Button */}

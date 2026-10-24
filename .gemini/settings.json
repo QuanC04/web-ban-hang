@@ -1,0 +1,8 @@
+{
+  "toolPermissions": {
+    "run_command": "auto",
+    "read_file": "auto",
+    "write_file": "auto",
+    "edit_file": "auto"
+  }
+}

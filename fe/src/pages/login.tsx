@@ -44,7 +44,7 @@ const LoginForm = () => {
       }
 
       const role = user?.role?.toLowerCase();
-      navigate({ to: role === "shop" ? "/shop" : "/" });
+      navigate({ to: role === "admin" ? "/shop" : "/" });
     } catch (err: any) {
       const msg =
         err.response?.data?.message || "Email hoặc mật khẩu không đúng!";
@@ -91,9 +91,11 @@ const LoginForm = () => {
               <label className="text-sm font-semibold text-gray-700">
                 Mật khẩu
               </label>
-              <a href="#" className="text-sm text-blue-600 hover:underline">
+              <Link
+                to="/forgot-password"
+                className="text-sm text-blue-600 hover:underline">
                 Quên mật khẩu?
-              </a>
+              </Link>
             </div>
             <input
               type="password"

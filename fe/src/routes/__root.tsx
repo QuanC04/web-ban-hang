@@ -19,7 +19,14 @@ function RootComponent() {
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   });
-  const hideSiteLayout = pathname === "/login" || pathname === "/register";
+  const authPaths = [
+    "/login",
+    "/register",
+    "/forgot-password",
+    "/verify-otp",
+    "/reset-password",
+  ];
+  const hideSiteLayout = authPaths.includes(pathname);
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });

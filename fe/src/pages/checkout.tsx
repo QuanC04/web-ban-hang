@@ -5,7 +5,7 @@ import { useCartStore } from "../store/cart";
 import { getAddressByUserId } from "../api/address";
 import type { AddressItem } from "../models";
 import AddAddressModal from "../component/addAddressModal";
-import { createOrder } from "../api/order";
+import { buyNow, createOrder } from "../api/order";
 import { validateCoupon } from "../api/coupon";
 
 const formatPrice = (value: number) =>
@@ -34,8 +34,22 @@ const CheckoutPage = () => {
   const [selectedAddressId, setSelectedAddressId] = useState("");
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
   const [discount, setDiscount] = useState(0);
+  const checkoutBuyNowItem = useCartStore((state) => state.checkoutBuyNowItem);
+  const clearCheckoutBuyNowItem = useCartStore(
+    (state) => state.clearCheckoutBuyNowItem,
+  );
+  const isBuyNow = !!checkoutBuyNowItem;
 
   const rows = useMemo(() => {
+    if (isBuyNow && checkoutBuyNowItem) {
+      return [
+        {
+          id: checkoutBuyNowItem.product.id,
+          product: checkoutBuyNowItem.product,
+          quantity: checkoutBuyNowItem.quantity,
+        },
+      ];
+    }
     const selectedProductIds =
       checkoutCartItemsIds ?? cartItems.map((item) => item.id);
 
@@ -104,16 +118,30 @@ const CheckoutPage = () => {
 
   const handlePlaceOrder = async () => {
     if (!rows.length) return;
-    await createOrder({
-      cartItemsIds: rows.map((item) => item.id),
-      shipping_address: {
-        name: receiverName,
-        phone_number: phone,
-        address: address,
-      },
-      coupon_code: checkoutCouponCode,
-    });
-    clearcheckoutCartItemsIds();
+    const shippingAddress = {
+      name: receiverName,
+      phone_number: phone,
+      address: address,
+    };
+
+    if (isBuyNow && checkoutBuyNowItem) {
+      await buyNow({
+        productId: checkoutBuyNowItem.product.id,
+        quantity: checkoutBuyNowItem.quantity,
+        shipping_address: shippingAddress,
+        coupon_code: checkoutCouponCode,
+        payment_method: paymentMethod as "cod" | "bank",
+      });
+      clearCheckoutBuyNowItem();
+    } else {
+      await createOrder({
+        cartItemsIds: rows.map((item) => item.id),
+        shipping_address: shippingAddress,
+        coupon_code: checkoutCouponCode,
+        payment_method: paymentMethod as "cod" | "bank",
+      });
+      clearcheckoutCartItemsIds();
+    }
     navigate({ to: "/order-success" });
     await fetchCart();
   };
