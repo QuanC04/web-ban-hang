@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Star, X, CheckCircle, Loader2, Sparkles } from "lucide-react";
-import { createReview, mockCreateReview } from "../api/review";
+import { createReview } from "../api/review";
 import { useUserStore } from "../store/user";
 
 interface ReviewModalProps {
@@ -36,7 +36,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
   productName = "Sản phẩm",
   productImage,
   orderItemId = "mock_order_item_001",
-  useRealApi = false,
+  useRealApi = true,
   onSuccess,
 }) => {
   const { user } = useUserStore();
@@ -68,16 +68,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
         comment: comment.trim() || undefined,
       };
 
-      if (useRealApi) {
-        // Gửi lên API Backend thật
-        await createReview(payload);
-      } else {
-        // Sử dụng dữ liệu Mock tạm thời
-        await mockCreateReview(payload, {
-          full_name: user?.full_name,
-          avatar_url: user?.avatar_url,
-        });
-      }
+      await createReview(payload);
 
       setIsSuccess(true);
 
@@ -126,7 +117,9 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
             <div>
               <h3 className="font-bold text-[#0f172a]">Đánh giá sản phẩm</h3>
               <p className="text-xs text-[#64748b]">
-                {useRealApi ? "Kết nối API thật" : "Dữ liệu Mock (Sẵn sàng kết nối API)"}
+                {useRealApi
+                  ? "Kết nối API thật"
+                  : "Dữ liệu Mock (Sẵn sàng kết nối API)"}
               </p>
             </div>
           </div>
@@ -231,7 +224,12 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
               <div className="mb-5 flex items-center gap-2 rounded-xl bg-amber-50 border border-amber-200 p-2.5 text-xs text-amber-800">
                 <Sparkles className="h-4 w-4 shrink-0 text-amber-600" />
                 <span>
-                  Đang bật chế độ <strong>Mock Data</strong> để bạn trải nghiệm ngay. Khi Backend có API, chỉ cần chuyển <code className="bg-amber-100 px-1 py-0.5 rounded">useRealApi=true</code>.
+                  Đang bật chế độ <strong>Mock Data</strong> để bạn trải nghiệm
+                  ngay. Khi Backend có API, chỉ cần chuyển{" "}
+                  <code className="bg-amber-100 px-1 py-0.5 rounded">
+                    useRealApi=true
+                  </code>
+                  .
                 </span>
               </div>
             )}

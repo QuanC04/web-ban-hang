@@ -12,6 +12,7 @@ import profileAddressRoute from "./routes/profile-address";
 import profileSecurityRoute from "./routes/profile-security";
 import shopRoute from "./routes/shop";
 import shopProductsRoute from "./routes/shop-products";
+import shopOrdersRoute from "./routes/shop-orders";
 import productDetailRoute from "./routes/product-detail";
 import shopStoreRoute from "./routes/shop-store";
 import cartRoute from "./routes/cart";
@@ -35,6 +36,7 @@ const routeTree = rootRoute.addChildren([
   profileSecurityRoute,
   shopRoute,
   shopProductsRoute,
+  shopOrdersRoute,
   productDetailRoute,
   shopStoreRoute,
   cartRoute,

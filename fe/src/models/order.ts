@@ -1,3 +1,5 @@
+import type { OrderItemReview } from "./review";
+
 export interface shippingAddress {
   name: string;
   phone_number: string;
@@ -23,6 +25,7 @@ export type OrderStatus =
   | "pending"
   | "confirmed"
   | "shipping"
+  | "paid"
   | "delivered"
   | "cancelled";
 
@@ -40,6 +43,8 @@ export interface OrderItem {
   quantity: number;
   price_at_purchase: number;
   product: OrderProductSnapshot;
+  review?: OrderItemReview | null;
+  reviews?: OrderItemReview[] | null;
 }
 
 export interface Payment {
@@ -51,9 +56,17 @@ export interface Payment {
   created_at: string;
 }
 
+export interface OrderCustomerInfo {
+  id: string;
+  full_name?: string | null;
+  email: string;
+  phone_number?: string | null;
+}
+
 export interface Order {
   id: string;
   user_id: string;
+  user?: OrderCustomerInfo;
   status: OrderStatus;
   total_before_discount: number;
   total_amount: number;

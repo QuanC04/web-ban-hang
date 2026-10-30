@@ -1,28 +1,26 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import {
-  Award,
   ChevronRight,
-  Clock,
   Heart,
   Home,
+  Loader2,
   MessageCircle,
   Minus,
   Plus,
   RotateCcw,
-  Share2,
   Shield,
   ShoppingCart,
   Star,
   Store,
-  Truck,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useCartStore } from "../store/cart";
 import { addToCart } from "../api/cart";
 import { startConversation } from "../api/message";
 import { getMarketProduct, getProductById } from "../api/product";
+import { getProductReviews } from "../api/review";
+import type { ProductReviewsResponse, ReviewItem, ReviewSummary } from "../models";
 import { useUserStore } from "../store/user";
-import ReviewModal from "../component/reviewModal";
 
 interface ProductDetailPageProps {
   productId: string;
@@ -47,44 +45,6 @@ const vouchers = [
     discount: "Miễn phí vận chuyển",
     description: "Cho đơn từ 150.000đ",
     minOrder: 150000,
-  },
-];
-
-const ratingBreakdown = [
-  { stars: 5, count: 850, percentage: 68 },
-  { stars: 4, count: 280, percentage: 22 },
-  { stars: 3, count: 75, percentage: 6 },
-  { stars: 2, count: 30, percentage: 3 },
-  { stars: 1, count: 15, percentage: 1 },
-];
-
-const reviews = [
-  {
-    userName: "Nguyễn Thị Mai",
-    rating: 5,
-    date: "15/04/2026",
-    comment:
-      "Sách được đóng gói cẩn thận, bìa đẹp và nội dung đúng như mô tả. Shop phản hồi nhanh.",
-    variant: "Bìa mềm - Tiếng Việt",
-    helpful: 24,
-  },
-  {
-    userName: "Trần Văn Hùng",
-    rating: 4,
-    date: "10/04/2026",
-    comment:
-      "Giao hàng đúng hẹn, chất lượng in tốt. Giá hợp lý so với mặt bằng chung.",
-    variant: "Tiêu chuẩn",
-    helpful: 12,
-  },
-  {
-    userName: "Lê Thị Hương",
-    rating: 5,
-    date: "05/04/2026",
-    comment:
-      "Một trải nghiệm mua sách rất ổn. Mình sẽ quay lại shop cho các đầu sách tiếp theo.",
-    variant: "Tiếng Việt",
-    helpful: 18,
   },
 ];
 
@@ -141,6 +101,20 @@ const formatPrice = (value: number) =>
     maximumFractionDigits: 0,
   }).format(value);
 
+const formatDate = (iso: string) => {
+  try {
+    return new Intl.DateTimeFormat("vi-VN", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(new Date(iso));
+  } catch {
+    return iso;
+  }
+};
+
 const ProductDetailPage = ({ productId }: ProductDetailPageProps) => {
   const navigate = useNavigate();
   const user = useUserStore((state) => state.user);
@@ -158,8 +132,12 @@ const ProductDetailPage = ({ productId }: ProductDetailPageProps) => {
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [notice, setNotice] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
-  const [reviewList, setReviewList] = useState(reviews);
+
+  // Real review states
+  const [reviewsData, setReviewsData] = useState<ProductReviewsResponse | null>(null);
+  const [selectedRating, setSelectedRating] = useState<number | undefined>(undefined);
+  const [reviewPage, setReviewPage] = useState<number>(1);
+  const [isLoadingReviews, setIsLoadingReviews] = useState<boolean>(false);
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -174,6 +152,27 @@ const ProductDetailPage = ({ productId }: ProductDetailPageProps) => {
     };
     fetchProduct();
   }, [productId]);
+
+  useEffect(() => {
+    const fetchReviews = async () => {
+      try {
+        setIsLoadingReviews(true);
+        const data = await getProductReviews(productId, {
+          rating: selectedRating,
+          page: reviewPage,
+          limit: 10,
+        });
+        setReviewsData(data);
+      } catch (err) {
+        console.error("Lỗi tải đánh giá sản phẩm:", err);
+      } finally {
+        setIsLoadingReviews(false);
+      }
+    };
+    if (productId) {
+      fetchReviews();
+    }
+  }, [productId, selectedRating, reviewPage]);
 
   const images = useMemo(() => {
     if (!product?.image_url) return fallbackImages;
@@ -193,11 +192,11 @@ const ProductDetailPage = ({ productId }: ProductDetailPageProps) => {
           <button
             type="button"
             onClick={() => navigate({ to: "/" })}
-            className="mt-6 rounded-full bg-[#0f172a] px-8 py-3 text-white transition hover:bg-[#334155]">
-            Quay về trang chủ
+            className="mt-6 rounded-full bg-[#0f172a] px-8 py-3 font-semibold text-white transition hover:bg-[#334155]">
+            Về trang chủ
           </button>
         </div>
-    </main>
+      </main>
     );
   }
 
@@ -232,7 +231,6 @@ const ProductDetailPage = ({ productId }: ProductDetailPageProps) => {
       return;
     }
     if (!isAvailable || !product) return;
-    // Xóa lựa chọn từ giỏ hàng và đặt dữ liệu mua ngay
 
     setCheckoutBuyNowItem({
       product: product,
@@ -346,20 +344,36 @@ const ProductDetailPage = ({ productId }: ProductDetailPageProps) => {
                   {Array.from({ length: 5 }).map((_, index) => (
                     <Star
                       key={index}
-                      className="h-5 w-5 fill-[#fcd34d] text-[#fcd34d]"
+                      className={`h-5 w-5 ${
+                        reviewsData?.summary?.averageRating &&
+                        index < Math.round(reviewsData.summary.averageRating)
+                          ? "fill-[#fcd34d] text-[#fcd34d]"
+                          : "text-[#cbd5e1]"
+                      }`}
                     />
                   ))}
                 </div>
-                <span className="font-bold text-[#0f172a]">4.8</span>
+                <span className="font-bold text-[#0f172a]">
+                  {reviewsData?.summary?.totalReviews
+                    ? reviewsData.summary.averageRating.toFixed(1)
+                    : "Chưa có đánh giá"}
+                </span>
               </div>
               <div className="h-4 w-px bg-[#e2e8f0]" />
               <button
                 type="button"
+                onClick={() => {
+                  document
+                    .getElementById("product-reviews-section")
+                    ?.scrollIntoView({ behavior: "smooth" });
+                }}
                 className="text-[#64748b] underline hover:text-[#0f172a]">
-                1.250 đánh giá
+                {reviewsData?.summary?.totalReviews || 0} đánh giá
               </button>
               <div className="h-4 w-px bg-[#e2e8f0]" />
-              <span className="text-[#64748b]">1.250 đã bán</span>
+              <span className="text-[#64748b]">
+                {product.sold_quantity ?? 0} đã bán
+              </span>
             </div>
           </div>
 
@@ -452,50 +466,44 @@ const ProductDetailPage = ({ productId }: ProductDetailPageProps) => {
             </div>
           </div>
 
-          <div className="mb-6 flex flex-col gap-4 sm:flex-row">
+          <div className="mb-6 flex flex-col gap-3 sm:flex-row">
             <button
               type="button"
               onClick={handleAddToCart}
               disabled={!isAvailable || isSubmitting}
-              className="flex flex-1 items-center justify-center gap-2 rounded-full border-2 border-[#0f172a] py-4 font-bold text-[#0f172a] transition-colors hover:bg-[#fff7ed] disabled:cursor-not-allowed disabled:opacity-50">
+              className="flex flex-1 items-center justify-center gap-2 rounded-full border-2 border-[#0f172a] bg-white py-4 font-bold text-[#0f172a] transition-all hover:bg-[#fff7ed] disabled:cursor-not-allowed disabled:opacity-50">
               <ShoppingCart className="h-5 w-5" />
-              <span>{isSubmitting ? "Đang xử lý..." : "Thêm vào giỏ"}</span>
+              <span>
+                {isSubmitting ? "Đang thêm..." : "Thêm vào giỏ hàng"}
+              </span>
             </button>
             <button
               type="button"
               onClick={handleBuyNow}
-              disabled={!isAvailable || isSubmitting}
-              className="flex flex-1 items-center justify-center rounded-full bg-[#0f172a] py-4 font-bold text-white transition-colors hover:bg-[#334155] disabled:cursor-not-allowed disabled:bg-[#64748b]">
-              Mua ngay
-            </button>
-            <button
-              type="button"
-              className="rounded-full border-2 border-[#e2e8f0] px-6 py-4 transition-colors hover:bg-[#fff7ed]"
-              aria-label="Chia sẻ">
-              <Share2 className="h-5 w-5 text-[#0f172a]" />
+              disabled={!isAvailable}
+              className="flex flex-1 items-center justify-center gap-2 rounded-full bg-[#0f172a] py-4 font-bold text-white transition-all hover:bg-[#334155] disabled:cursor-not-allowed disabled:opacity-50">
+              <span>Mua ngay</span>
             </button>
           </div>
 
-          {notice ? (
-            <p className="mb-6 rounded-xl border border-[#e2e8f0] bg-white p-4 text-sm font-medium text-[#0f172a]">
+          {notice && (
+            <p className="mb-4 rounded-xl border border-[#fcd34d] bg-[#fff7ed] px-4 py-3 text-sm text-[#b45309]">
               {notice}
             </p>
-          ) : null}
+          )}
 
-          <div className="mb-6 grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3">
             <TrustBadge
               icon={Shield}
-              title="100% chính hãng"
-              description="Đảm bảo nguồn gốc"
+              title="Chính hãng 100%"
+              description="Cam kết hoàn tiền 200%"
             />
             <TrustBadge
               icon={RotateCcw}
               title="Đổi trả 7 ngày"
-              description="Miễn phí đổi trả"
+              description="Miễn phí đổi trả tận nhà"
             />
           </div>
-
-          <ShippingInfoCard />
         </section>
       </div>
 
@@ -514,14 +522,14 @@ const ProductDetailPage = ({ productId }: ProductDetailPageProps) => {
               <div className="flex flex-wrap items-center gap-3 text-sm text-[#64748b]">
                 <span className="flex items-center gap-1">
                   <Star className="h-4 w-4 fill-[#fcd34d] text-[#fcd34d]" />
-                  4.8 (1.250 đánh giá)
+                  {reviewsData?.summary?.averageRating
+                    ? `${reviewsData.summary.averageRating.toFixed(1)} (${reviewsData.summary.totalReviews} đánh giá)`
+                    : "Chưa có đánh giá"}
                 </span>
-                <span className="hidden sm:inline">|</span>
-                <span>156 sản phẩm</span>
                 <span className="hidden sm:inline">|</span>
                 <span>
                   {product.user?.addresses?.[0]?.province_name ||
-                    "Không xác định"}
+                    "Toàn quốc"}
                 </span>
               </div>
             </div>
@@ -567,35 +575,110 @@ const ProductDetailPage = ({ productId }: ProductDetailPageProps) => {
         </div>
       </section>
 
-      <section className="mb-8 rounded-2xl border border-[#e2e8f0] bg-white p-6 md:p-8">
+      {/* Real Reviews Section */}
+      <section
+        id="product-reviews-section"
+        className="mb-8 rounded-2xl border border-[#e2e8f0] bg-white p-6 md:p-8">
         <h2 className="mb-6 text-2xl font-bold text-[#0f172a]">
           Đánh giá sản phẩm
         </h2>
         <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
           <p className="text-sm text-[#64748b]">
-            Có {reviewList.length} đánh giá từ khách hàng
+            {reviewsData?.summary?.totalReviews
+              ? `Có ${reviewsData.summary.totalReviews} đánh giá từ khách hàng đã mua sản phẩm`
+              : "Chưa có đánh giá nào cho sản phẩm này"}
           </p>
+          <Link
+            to="/order-history"
+            className="flex items-center gap-2 rounded-full border-2 border-[#0f172a] px-4 py-2 text-xs font-semibold text-[#0f172a] transition hover:bg-[#0f172a] hover:text-white">
+            <Star className="h-3.5 w-3.5 fill-[#fcd34d] text-[#fcd34d]" />
+            <span>Đánh giá từ Đơn mua</span>
+          </Link>
+        </div>
+
+        <RatingsSummary summary={reviewsData?.summary} />
+
+        {/* Filter buttons by star */}
+        <div className="mt-6 flex flex-wrap items-center gap-2">
           <button
             type="button"
-            onClick={() => setIsReviewModalOpen(true)}
-            className="flex items-center gap-2 rounded-full bg-[#0f172a] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#334155]">
-            <Star className="h-4 w-4 fill-[#fcd34d] text-[#fcd34d]" />
-            <span>Viết đánh giá</span>
+            onClick={() => {
+              setSelectedRating(undefined);
+              setReviewPage(1);
+            }}
+            className={`rounded-full px-4 py-2 text-xs font-semibold transition ${
+              selectedRating === undefined
+                ? "bg-[#0f172a] text-white"
+                : "border border-[#e2e8f0] bg-white text-[#475569] hover:bg-[#f8fafc]"
+            }`}>
+            Tất cả ({reviewsData?.summary?.totalReviews || 0})
           </button>
+          {[5, 4, 3, 2, 1].map((star) => {
+            const count = reviewsData?.summary?.breakdown?.[star]?.count || 0;
+            return (
+              <button
+                key={star}
+                type="button"
+                onClick={() => {
+                  setSelectedRating(star);
+                  setReviewPage(1);
+                }}
+                className={`inline-flex items-center gap-1 rounded-full px-4 py-2 text-xs font-semibold transition ${
+                  selectedRating === star
+                    ? "bg-[#0f172a] text-white"
+                    : "border border-[#e2e8f0] bg-white text-[#475569] hover:bg-[#f8fafc]"
+                }`}>
+                <span>{star} sao</span>
+                <span className="opacity-75">({count})</span>
+              </button>
+            );
+          })}
         </div>
-        <RatingsSummary />
-        <div className="mt-8 space-y-6">
-          {reviewList.map((review, idx) => (
-            <ReviewCard key={`${review.userName}-${review.date}-${idx}`} {...review} />
-          ))}
-        </div>
-        <div className="mt-6 text-center">
-          <button
-            type="button"
-            className="rounded-full border-2 border-[#0f172a] px-8 py-3 font-medium text-[#0f172a] transition-colors hover:bg-[#fff7ed]">
-            Xem tất cả đánh giá
-          </button>
-        </div>
+
+        {/* Reviews list */}
+        {isLoadingReviews ? (
+          <div className="my-12 flex flex-col items-center justify-center gap-2 text-[#64748b]">
+            <Loader2 className="h-8 w-8 animate-spin text-[#fcd34d]" />
+            <p className="text-sm">Đang tải danh sách đánh giá...</p>
+          </div>
+        ) : !reviewsData?.reviews || reviewsData.reviews.length === 0 ? (
+          <div className="mt-8 rounded-2xl border border-dashed border-[#cbd5e1] bg-[#f8fafc] p-8 text-center">
+            <p className="text-sm font-medium text-[#64748b]">
+              {selectedRating
+                ? `Chưa có đánh giá nào ${selectedRating} sao cho sản phẩm này.`
+                : "Sản phẩm này chưa có đánh giá nào. Hãy là người đầu tiên trải nghiệm và chia sẻ nhận xét!"}
+            </p>
+          </div>
+        ) : (
+          <div className="mt-8 space-y-6">
+            {reviewsData.reviews.map((review) => (
+              <ReviewCard key={review.id} review={review} />
+            ))}
+          </div>
+        )}
+
+        {/* Pagination */}
+        {reviewsData?.pagination && reviewsData.pagination.totalPages > 1 && (
+          <div className="mt-8 flex items-center justify-center gap-3">
+            <button
+              type="button"
+              disabled={reviewPage <= 1}
+              onClick={() => setReviewPage((p) => Math.max(1, p - 1))}
+              className="rounded-full border border-[#e2e8f0] px-4 py-2 text-xs font-semibold text-[#0f172a] transition hover:bg-[#f8fafc] disabled:opacity-40">
+              Trang trước
+            </button>
+            <span className="text-xs font-medium text-[#64748b]">
+              Trang {reviewPage} / {reviewsData.pagination.totalPages}
+            </span>
+            <button
+              type="button"
+              disabled={reviewPage >= reviewsData.pagination.totalPages}
+              onClick={() => setReviewPage((p) => p + 1)}
+              className="rounded-full border border-[#e2e8f0] px-4 py-2 text-xs font-semibold text-[#0f172a] transition hover:bg-[#f8fafc] disabled:opacity-40">
+              Trang sau
+            </button>
+          </div>
+        )}
       </section>
 
       <section>
@@ -608,18 +691,6 @@ const ProductDetailPage = ({ productId }: ProductDetailPageProps) => {
           ))}
         </div>
       </section>
-      <ReviewModal
-        isOpen={isReviewModalOpen}
-        onClose={() => setIsReviewModalOpen(false)}
-        productId={product.id}
-        productName={product.name}
-        productImage={product.image_url || undefined}
-        orderItemId="mock_order_item_001"
-        useRealApi={false}
-        onSuccess={(newReview) => {
-          setReviewList((prev) => [newReview, ...prev]);
-        }}
-      />
     </main>
   );
 };
@@ -684,54 +755,6 @@ const VoucherCard = ({
   </div>
 );
 
-const ShippingInfoCard = () => (
-  <div className="rounded-2xl border border-[#e2e8f0] bg-white p-4">
-    <h3 className="mb-3 font-bold text-[#0f172a]">Thông tin vận chuyển</h3>
-    <div className="space-y-3">
-      {[
-        {
-          type: "Giao hàng tiêu chuẩn",
-          price: 30000,
-          estimatedDays: "2-3 ngày",
-          icon: Truck,
-        },
-        {
-          type: "Giao hàng nhanh",
-          price: 50000,
-          estimatedDays: "Trong 24 giờ",
-          icon: Clock,
-        },
-        {
-          type: "Miễn phí vận chuyển",
-          price: 0,
-          estimatedDays: "3-5 ngày",
-          icon: Award,
-        },
-      ].map((option) => {
-        const Icon = option.icon;
-        return (
-          <div
-            key={option.type}
-            className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#fff7ed]">
-                <Icon className="h-5 w-5 text-[#b45309]" />
-              </div>
-              <div>
-                <p className="font-medium text-[#0f172a]">{option.type}</p>
-                <p className="text-sm text-[#64748b]">{option.estimatedDays}</p>
-              </div>
-            </div>
-            <span className="font-medium text-[#0f172a]">
-              {option.price === 0 ? "Miễn phí" : formatPrice(option.price)}
-            </span>
-          </div>
-        );
-      })}
-    </div>
-  </div>
-);
-
 interface TrustBadgeProps {
   icon: typeof Shield;
   title: string;
@@ -760,87 +783,119 @@ const ProductSpec = ({ label, value }: ProductSpecProps) => (
   </div>
 );
 
-const RatingsSummary = () => (
-  <div className="grid grid-cols-1 gap-6 rounded-2xl bg-[#fff7ed] p-6 md:grid-cols-[14rem_1fr]">
-    <div className="text-center md:text-left">
-      <p className="text-5xl font-bold text-[#0f172a]">4.8</p>
-      <div className="my-3 flex justify-center gap-1 md:justify-start">
-        {Array.from({ length: 5 }).map((_, index) => (
-          <Star key={index} className="h-5 w-5 fill-[#fcd34d] text-[#fcd34d]" />
-        ))}
-      </div>
-      <p className="text-sm text-[#64748b]">1.250 đánh giá</p>
-    </div>
-    <div className="space-y-2">
-      {ratingBreakdown.map((item) => (
-        <div key={item.stars} className="flex items-center gap-3">
-          <span className="w-10 text-sm text-[#64748b]">{item.stars} sao</span>
-          <div className="h-2 flex-1 overflow-hidden rounded-full bg-white">
-            <div
-              className="h-full rounded-full bg-[#fcd34d]"
-              style={{ width: `${item.percentage}%` }}
-            />
-          </div>
-          <span className="w-10 text-right text-sm text-[#64748b]">
-            {item.count}
-          </span>
-        </div>
-      ))}
-    </div>
-  </div>
-);
-
-interface ReviewCardProps {
-  userName: string;
-  rating: number;
-  date: string;
-  comment: string;
-  variant: string;
-  helpful: number;
+interface RatingsSummaryProps {
+  summary?: ReviewSummary;
 }
 
-const ReviewCard = ({
-  userName,
-  rating,
-  date,
-  comment,
-  variant,
-  helpful,
-}: ReviewCardProps) => (
-  <article className="border-b border-[#e2e8f0] pb-6 last:border-b-0 last:pb-0">
-    <div className="mb-3 flex items-start justify-between gap-4">
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#fcd34d] font-bold text-[#0f172a]">
-          {userName.charAt(0)}
+const RatingsSummary = ({ summary }: RatingsSummaryProps) => {
+  const totalReviews = summary?.totalReviews || 0;
+  const averageRating = summary?.averageRating || 0;
+  const breakdown = summary?.breakdown || {
+    5: { count: 0, percentage: 0 },
+    4: { count: 0, percentage: 0 },
+    3: { count: 0, percentage: 0 },
+    2: { count: 0, percentage: 0 },
+    1: { count: 0, percentage: 0 },
+  };
+
+  return (
+    <div className="grid grid-cols-1 gap-6 rounded-2xl bg-[#fff7ed] p-6 md:grid-cols-[14rem_1fr]">
+      <div className="text-center md:text-left">
+        <p className="text-5xl font-bold text-[#0f172a]">
+          {totalReviews > 0 ? averageRating.toFixed(1) : "0.0"}
+        </p>
+        <div className="my-3 flex justify-center gap-1 md:justify-start">
+          {Array.from({ length: 5 }).map((_, index) => (
+            <Star
+              key={index}
+              className={`h-5 w-5 ${
+                index < Math.round(averageRating)
+                  ? "fill-[#fcd34d] text-[#fcd34d]"
+                  : "text-[#cbd5e1]"
+              }`}
+            />
+          ))}
         </div>
-        <div>
-          <p className="font-bold text-[#0f172a]">{userName}</p>
-          <p className="text-sm text-[#64748b]">{date}</p>
-        </div>
+        <p className="text-sm text-[#64748b]">
+          {totalReviews > 0 ? `${totalReviews} đánh giá` : "Chưa có đánh giá"}
+        </p>
       </div>
-      <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-700">
-        Đã mua hàng
-      </span>
+      <div className="space-y-2">
+        {[5, 4, 3, 2, 1].map((stars) => {
+          const item = breakdown[stars] || { count: 0, percentage: 0 };
+          return (
+            <div key={stars} className="flex items-center gap-3">
+              <span className="w-12 text-sm text-[#64748b]">{stars} sao</span>
+              <div className="h-2 flex-1 overflow-hidden rounded-full bg-white">
+                <div
+                  className="h-full rounded-full bg-[#fcd34d] transition-all duration-300"
+                  style={{ width: `${item.percentage}%` }}
+                />
+              </div>
+              <span className="w-12 text-right text-sm text-[#64748b]">
+                {item.count}
+              </span>
+            </div>
+          );
+        })}
+      </div>
     </div>
-    <div className="mb-2 flex items-center gap-1">
-      {Array.from({ length: 5 }).map((_, index) => (
-        <Star
-          key={index}
-          className={`h-4 w-4 ${
-            index < rating ? "fill-[#fcd34d] text-[#fcd34d]" : "text-[#cbd5e1]"
-          }`}
-        />
-      ))}
-    </div>
-    <p className="mb-2 text-sm text-[#64748b]">Phân loại: {variant}</p>
-    <p className="mb-3 leading-relaxed text-[#475569]">{comment}</p>
-    <button
-      type="button"
-      className="text-sm font-medium text-[#0f172a] hover:underline">
-      Hữu ích ({helpful})
-    </button>
-  </article>
-);
+  );
+};
+
+interface ReviewCardProps {
+  review: ReviewItem;
+}
+
+const ReviewCard = ({ review }: ReviewCardProps) => {
+  const userName = review.user?.full_name || "Khách hàng Bookora";
+  const avatarUrl = review.user?.avatar_url;
+  const initial = userName.trim().charAt(0).toUpperCase() || "K";
+
+  return (
+    <article className="border-b border-[#e2e8f0] pb-6 last:border-b-0 last:pb-0">
+      <div className="mb-3 flex items-start justify-between gap-4">
+        <div className="flex items-center gap-3">
+          {avatarUrl ? (
+            <img
+              src={avatarUrl}
+              alt={userName}
+              className="h-10 w-10 rounded-full object-cover border border-[#e2e8f0]"
+            />
+          ) : (
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#fcd34d] font-bold text-[#0f172a]">
+              {initial}
+            </div>
+          )}
+          <div>
+            <p className="font-bold text-[#0f172a]">{userName}</p>
+            <p className="text-xs text-[#64748b]">{formatDate(review.created_at)}</p>
+          </div>
+        </div>
+        <span className="rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1 text-xs font-medium text-emerald-700">
+          Đã mua hàng
+        </span>
+      </div>
+      <div className="mb-2 flex items-center gap-1">
+        {Array.from({ length: 5 }).map((_, index) => (
+          <Star
+            key={index}
+            className={`h-4 w-4 ${
+              index < review.rating ? "fill-[#fcd34d] text-[#fcd34d]" : "text-[#cbd5e1]"
+            }`}
+          />
+        ))}
+      </div>
+      <p className="leading-relaxed text-[#334155]">
+        {review.comment || (
+          <span className="italic text-[#94a3b8]">
+            Khách hàng không để lại nhận xét bằng lời.
+          </span>
+        )}
+      </p>
+    </article>
+  );
+};
 
 interface RelatedProductCardProps {
   id: string;

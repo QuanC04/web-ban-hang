@@ -1,15 +1,24 @@
 import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { ChevronDown, ChevronUp, Package, ShoppingBag } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronUp,
+  Clock,
+  Package,
+  PackageCheck,
+  ShoppingBag,
+  Truck,
+} from "lucide-react";
 import ProfileLayout from "../component/profileLayout";
 import ReviewModal from "../component/reviewModal";
-import { getMyOrders } from "../api/order";
+import { confirmDelivery, getMyOrders } from "../api/order";
 import type { Order, OrderStatus } from "../models/order";
 
 const STATUS_LABELS: Record<OrderStatus, string> = {
   pending: "Chờ xác nhận",
   confirmed: "Đã xác nhận",
-  shipping: "Đang giao",
+  shipping: "Đang giao hàng...",
+  paid: "Đang giao hàng...",
   delivered: "Đã giao",
   cancelled: "Đã hủy",
 };
@@ -18,6 +27,7 @@ const STATUS_COLORS: Record<OrderStatus, string> = {
   pending: "bg-amber-100 text-amber-700",
   confirmed: "bg-blue-100 text-blue-700",
   shipping: "bg-indigo-100 text-indigo-700",
+  paid: "bg-indigo-100 text-indigo-700",
   delivered: "bg-emerald-100 text-emerald-700",
   cancelled: "bg-rose-100 text-rose-700",
 };
@@ -26,7 +36,7 @@ const FILTER_TABS: { value: string; label: string }[] = [
   { value: "", label: "Tất cả" },
   { value: "pending", label: "Chờ xác nhận" },
   { value: "confirmed", label: "Đã xác nhận" },
-  { value: "shipping", label: "Đang giao" },
+  { value: "shipping", label: "Đang giao hàng" },
   { value: "delivered", label: "Đã giao" },
   { value: "cancelled", label: "Đã hủy" },
 ];
@@ -47,12 +57,19 @@ const formatDate = (iso: string) =>
 
 interface OrderCardProps {
   order: Order;
+  onRefresh?: () => void;
 }
 
-const OrderCard = ({ order }: OrderCardProps) => {
+const OrderCard = ({ order, onRefresh }: OrderCardProps) => {
   const [expanded, setExpanded] = useState(false);
-  const [reviewingItem, setReviewingItem] = useState<{ id: string; name: string; image_url?: string | null } | null>(null);
+  const [reviewingItem, setReviewingItem] = useState<{
+    id: string;
+    name: string;
+    image_url?: string | null;
+  } | null>(null);
   const [reviewedItemIds, setReviewedItemIds] = useState<string[]>([]);
+  const [isConfirming, setIsConfirming] = useState(false);
+
   const shippingAddr = (() => {
     try {
       return JSON.parse(order.shipping_address);
@@ -62,6 +79,25 @@ const OrderCard = ({ order }: OrderCardProps) => {
   })();
   const status = order.status as OrderStatus;
 
+  const handleConfirmDelivery = async () => {
+    const confirmed = window.confirm(
+      "Bạn xác nhận đã nhận được kiện hàng này nguyên vẹn?",
+    );
+    if (!confirmed) return;
+
+    try {
+      setIsConfirming(true);
+      await confirmDelivery(order.id);
+      onRefresh?.();
+    } catch (err: any) {
+      alert(
+        err?.response?.data?.message ||
+          "Không thể xác nhận đơn hàng lúc này. Vui lòng thử lại sau.",
+      );
+    } finally {
+      setIsConfirming(false);
+    }
+  };
 
   return (
     <div className="rounded-2xl border border-[#e2e8f0] bg-white">
@@ -132,6 +168,42 @@ const OrderCard = ({ order }: OrderCardProps) => {
         </div>
       </div>
 
+      {status === "pending" && (
+        <div className="flex items-center gap-2 border-t border-[#e2e8f0] bg-amber-50/70 px-5 py-3 text-xs text-amber-800">
+          <Clock className="h-4 w-4 shrink-0 text-amber-600" />
+          <span>Đơn hàng đang chờ người bán xác nhận tiếp nhận.</span>
+        </div>
+      )}
+
+      {status === "confirmed" && (
+        <div className="flex items-center gap-2 border-t border-[#e2e8f0] bg-blue-50/70 px-5 py-3 text-xs text-blue-800">
+          <PackageCheck className="h-4 w-4 shrink-0 text-blue-600" />
+          <span>
+            Người bán đã xác nhận và đang đóng gói, chuẩn bị bàn giao cho bên vận
+            chuyển.
+          </span>
+        </div>
+      )}
+
+      {(status === "shipping" || status === "paid") && (
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#e2e8f0] bg-indigo-50/70 px-5 py-3">
+          <div className="flex items-center gap-2 text-xs text-indigo-900">
+            <Truck className="h-4 w-4 shrink-0 text-indigo-600" />
+            <span>
+              Đơn hàng đang trên đường giao đến bạn. Khi đã nhận được hàng
+              nguyên vẹn, vui lòng xác nhận:
+            </span>
+          </div>
+          <button
+            type="button"
+            disabled={isConfirming}
+            onClick={handleConfirmDelivery}
+            className="rounded-full bg-emerald-600 px-4 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:opacity-50">
+            {isConfirming ? "Đang xác nhận..." : "Đã nhận được hàng"}
+          </button>
+        </div>
+      )}
+
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
@@ -153,53 +225,60 @@ const OrderCard = ({ order }: OrderCardProps) => {
             Danh sách sản phẩm
           </p>
           <div className="space-y-3">
-            {order.items.map((item) => (
-              <div
-                key={item.id}
-                className="flex items-center gap-3 rounded-xl border border-[#e2e8f0] p-3">
-                <img
-                  src={
-                    item.product.image_url ||
-                    "https://via.placeholder.com/56?text=SP"
-                  }
-                  alt={item.product.name}
-                  className="h-14 w-14 rounded-lg object-cover"
-                />
-                <div className="flex-1 min-w-0">
-                  <p className="truncate text-sm font-medium text-[#0f172a]">
-                    {item.product.name}
-                  </p>
-                  <p className="text-xs text-[#64748b]">
-                    {formatCurrency(item.price_at_purchase)} x {item.quantity}
-                  </p>
+            {order.items.map((item) => {
+              const hasReviewed = Boolean(
+                item.review ||
+                  (item.reviews && item.reviews.length > 0) ||
+                  reviewedItemIds.includes(item.id),
+              );
+
+              return (
+                <div
+                  key={item.id}
+                  className="flex items-center gap-3 rounded-xl border border-[#e2e8f0] p-3">
+                  <img
+                    src={
+                      item.product.image_url ||
+                      "https://via.placeholder.com/56?text=SP"
+                    }
+                    alt={item.product.name}
+                    className="h-14 w-14 rounded-lg object-cover"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="truncate text-sm font-medium text-[#0f172a]">
+                      {item.product.name}
+                    </p>
+                    <p className="text-xs text-[#64748b]">
+                      {formatCurrency(item.price_at_purchase)} x {item.quantity}
+                    </p>
+                  </div>
+                  <div className="flex flex-col items-end gap-1.5 shrink-0">
+                    <p className="text-sm font-semibold text-[#0f172a]">
+                      {formatCurrency(item.price_at_purchase * item.quantity)}
+                    </p>
+                    {status === "delivered" &&
+                      (hasReviewed ? (
+                        <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-600">
+                          Đã đánh giá
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setReviewingItem({
+                              id: item.id,
+                              name: item.product.name,
+                              image_url: item.product.image_url,
+                            })
+                          }
+                          className="rounded-full border border-[#0f172a] px-3 py-1 text-xs font-semibold text-[#0f172a] transition hover:bg-[#0f172a] hover:text-white">
+                          Đánh giá
+                        </button>
+                      ))}
+                  </div>
                 </div>
-                <div className="flex flex-col items-end gap-1.5 shrink-0">
-                  <p className="text-sm font-semibold text-[#0f172a]">
-                    {formatCurrency(item.price_at_purchase * item.quantity)}
-                  </p>
-                  {status === "delivered" && (
-                    reviewedItemIds.includes(item.id) ? (
-                      <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-600 border border-emerald-200">
-                        Đã đánh giá
-                      </span>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setReviewingItem({
-                            id: item.id,
-                            name: item.product.name,
-                            image_url: item.product.image_url,
-                          })
-                        }
-                        className="rounded-full border border-[#0f172a] px-3 py-1 text-xs font-semibold text-[#0f172a] transition hover:bg-[#0f172a] hover:text-white">
-                        Đánh giá
-                      </button>
-                    )
-                  )}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           <div className="mt-4 space-y-1 rounded-xl bg-[#f8fafc] p-4 text-sm">
@@ -249,6 +328,7 @@ const OrderCard = ({ order }: OrderCardProps) => {
           )}
         </div>
       )}
+
       {reviewingItem && (
         <ReviewModal
           isOpen={!!reviewingItem}
@@ -256,11 +336,12 @@ const OrderCard = ({ order }: OrderCardProps) => {
           orderItemId={reviewingItem.id}
           productName={reviewingItem.name}
           productImage={reviewingItem.image_url || undefined}
-          useRealApi={false}
+          useRealApi={true}
           onSuccess={() => {
             if (reviewingItem) {
               setReviewedItemIds((prev) => [...prev, reviewingItem.id]);
             }
+            onRefresh?.();
           }}
         />
       )}
@@ -354,7 +435,11 @@ const OrderHistoryPage = () => {
         ) : (
           <div className="space-y-4">
             {orders.map((order) => (
-              <OrderCard key={order.id} order={order} />
+              <OrderCard
+                key={order.id}
+                order={order}
+                onRefresh={() => fetchOrders(pagination.page, activeStatus)}
+              />
             ))}
           </div>
         )}

@@ -1,5 +1,5 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { Boxes, LayoutDashboard, Store } from "lucide-react";
+import { Boxes, LayoutDashboard, ShoppingBag, Store } from "lucide-react";
 import type { ReactNode } from "react";
 
 interface SellerWorkspaceLayoutProps {
@@ -8,6 +8,7 @@ interface SellerWorkspaceLayoutProps {
 
 const sellerNavItems = [
   { label: "Tổng quan", icon: LayoutDashboard, path: "/shop" },
+  { label: "Đơn hàng", icon: ShoppingBag, path: "/shop/orders" },
   { label: "Sản phẩm", icon: Boxes, path: "/shop/products" },
   { label: "Cửa hàng", icon: Store, path: "/shops/my-shop" },
 ];

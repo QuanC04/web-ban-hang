@@ -9,6 +9,11 @@ export interface ReviewUser {
   full_name?: string | null;
   avatar_url?: string | null;
 }
+export interface GetProductReviewsParams {
+  page?: number;
+  limit?: number;
+  rating?: number;
+}
 
 export interface ReviewItem {
   id: string;
@@ -41,4 +46,10 @@ export interface ProductReviewsResponse {
     totalPages: number;
     totalItems: number;
   };
+}
+export interface OrderItemReview {
+  id: string;
+  rating: number;
+  comment?: string | null;
+  created_at: string;
 }

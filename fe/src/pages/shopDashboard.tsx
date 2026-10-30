@@ -16,11 +16,13 @@ import {
   Star,
   Users,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import AddProductModal from "../component/addProductModal";
 import SellerWorkspaceLayout from "../component/sellerWorkspaceLayout";
 import { useUserStore } from "../store/user";
+import { getShopOrders, updateOrderStatus } from "../api/order";
+import type { Order, OrderStatus } from "../models/order";
 
 const stats = [
   {
@@ -64,33 +66,6 @@ const additionalStats = [
   { label: "Người theo dõi", value: "3.456", icon: Users },
 ];
 
-const recentOrders = [
-  {
-    id: "ORD-2026-001",
-    customer: "Nguyễn Thị B",
-    product: "Nhà Giả Kim",
-    amount: 79000,
-    status: "Chờ xử lý",
-    date: "25/04/2026",
-  },
-  {
-    id: "ORD-2026-002",
-    customer: "Trần Văn C",
-    product: "Sapiens",
-    amount: 189000,
-    status: "Đang giao",
-    date: "25/04/2026",
-  },
-  {
-    id: "ORD-2026-003",
-    customer: "Lê Thị D",
-    product: "Đắc Nhân Tâm",
-    amount: 65000,
-    status: "Hoàn thành",
-    date: "24/04/2026",
-  },
-];
-
 const topProducts = [
   { name: "Atomic Habits", sold: 86, stock: 24, revenue: 17114000 },
   { name: "Deep Work", sold: 69, stock: 12, revenue: 14421000 },
@@ -108,7 +83,7 @@ const notifications = [
   },
   {
     icon: ShoppingBag,
-    title: "5 đơn hàng chờ xác nhận",
+    title: "Đơn hàng chờ xác nhận",
     message: "Xác nhận đơn trong vòng 24h để tránh hủy tự động.",
     time: "30 phút trước",
     tone: "border-[#fcd34d] bg-[#fff7ed] text-[#b45309]",
@@ -116,7 +91,7 @@ const notifications = [
   },
   {
     icon: Star,
-    title: "Bạn có 3 đánh giá mới",
+    title: "Bạn có đánh giá mới",
     message: "Khách hàng đã để lại đánh giá cho cửa hàng.",
     time: "1 giờ trước",
     tone: "border-blue-200 bg-blue-50 text-blue-500",
@@ -126,7 +101,7 @@ const notifications = [
 
 const quickActions = [
   { to: "/shop/products", icon: Plus, label: "Thêm sản phẩm" },
-  { to: "/shop", icon: FileText, label: "Quản lý đơn", badge: "5" },
+  { to: "/shop/orders", icon: FileText, label: "Quản lý đơn" },
   { to: "/shop", icon: BarChart3, label: "Thống kê" },
   { to: "/profile", icon: Settings, label: "Cài đặt" },
 ];
@@ -138,10 +113,52 @@ const formatPrice = (value: number) =>
     maximumFractionDigits: 0,
   }).format(value);
 
+const formatDate = (iso: string) =>
+  new Intl.DateTimeFormat("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(iso));
+
 const ShopDashboardPage = () => {
   const { user } = useUserStore();
   const [isAddProductModalOpen, setIsAddProductModalOpen] = useState(false);
+  const [recentRealOrders, setRecentRealOrders] = useState<Order[]>([]);
+  const [isOrdersLoading, setIsOrdersLoading] = useState(false);
+  const [confirmingId, setConfirmingId] = useState<string | null>(null);
+
   const sellerName = user?.full_name || "Bookora Seller";
+
+  const loadRecentOrders = async () => {
+    try {
+      setIsOrdersLoading(true);
+      const res = await getShopOrders(1, 4);
+      setRecentRealOrders(res.data.orders);
+    } catch {
+      // ignore
+    } finally {
+      setIsOrdersLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadRecentOrders();
+  }, []);
+
+  const handleQuickConfirm = async (orderId: string) => {
+    try {
+      setConfirmingId(orderId);
+      await updateOrderStatus(orderId, "confirmed");
+      await loadRecentOrders();
+    } catch (err: any) {
+      alert(
+        err?.response?.data?.message || "Không thể xác nhận đơn hàng lúc này.",
+      );
+    } finally {
+      setConfirmingId(null);
+    }
+  };
 
   return (
     <SellerWorkspaceLayout>
@@ -160,16 +177,16 @@ const ShopDashboardPage = () => {
               8
             </span>
           </button>
-          <button
-            type="button"
-            className="inline-flex items-center gap-2 rounded-full border border-[#e2e8f0] bg-white px-5 py-3 text-sm font-semibold text-[#0f172a] transition hover:bg-[#fff7ed]">
+          <Link
+            to="/shop/orders"
+            className="inline-flex items-center gap-2 rounded-full border border-[#e2e8f0] bg-white px-5 py-3 text-sm font-semibold text-[#0f172a] shadow-sm transition hover:bg-[#fff7ed]">
             <PackageSearch className="h-5 w-5" />
             Xử lý đơn chờ
-          </button>
+          </Link>
           <button
             type="button"
             onClick={() => setIsAddProductModalOpen(true)}
-            className="inline-flex items-center gap-2 rounded-full bg-[#0f172a] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#334155]">
+            className="inline-flex items-center gap-2 rounded-full bg-[#0f172a] px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#334155]">
             <Plus className="h-5 w-5" />
             Thêm sản phẩm
           </button>
@@ -193,61 +210,77 @@ const ShopDashboardPage = () => {
                 </div>
                 <div
                   className={`flex items-center gap-1 rounded-full px-2 py-1 text-sm font-medium ${
-                    isUp ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+                    isUp
+                      ? "bg-green-100 text-green-700"
+                      : "bg-red-100 text-red-700"
                   }`}>
-                  {isUp ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />}
+                  {isUp ? (
+                    <ArrowUp className="h-4 w-4" />
+                  ) : (
+                    <ArrowDown className="h-4 w-4" />
+                  )}
                   <span>{stat.change}</span>
                 </div>
               </div>
-              <p className="mb-1 text-3xl font-bold text-[#0f172a]">
-                {stat.value}
-              </p>
-              <p className="text-sm text-[#64748b]">{stat.label}</p>
+              <h3 className="mb-1 text-sm text-[#64748b]">{stat.label}</h3>
+              <p className="text-2xl font-bold text-[#0f172a]">{stat.value}</p>
             </article>
           );
         })}
       </div>
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-4">
         {additionalStats.map((stat) => {
           const Icon = stat.icon;
           return (
-            <article
+            <div
               key={stat.label}
-              className="rounded-xl border border-[#e2e8f0] bg-white p-4">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#fff7ed]">
-                  <Icon className="h-5 w-5 text-[#b45309]" />
-                </div>
-                <div>
-                  <p className="text-xl font-bold text-[#0f172a]">
-                    {stat.value}
-                  </p>
-                  <p className="text-xs text-[#64748b]">{stat.label}</p>
-                </div>
+              className="flex items-center gap-4 rounded-xl border border-[#e2e8f0] bg-white p-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#fff7ed]">
+                <Icon className="h-5 w-5 text-[#0f172a]" />
               </div>
-            </article>
+              <div>
+                <p className="text-xs text-[#64748b]">{stat.label}</p>
+                <p className="font-bold text-[#0f172a]">{stat.value}</p>
+              </div>
+            </div>
           );
         })}
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <div className="space-y-6 lg:col-span-2">
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
+        <div className="space-y-8 lg:col-span-2">
           <article className="rounded-2xl border border-[#e2e8f0] bg-white p-6">
-            <h2 className="mb-6 text-xl font-bold text-[#0f172a]">
-              Biểu đồ doanh thu 7 ngày
-            </h2>
-            <div className="flex h-64 items-end justify-around gap-4">
+            <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <h2 className="text-xl font-bold text-[#0f172a]">
+                  Doanh thu tuần qua
+                </h2>
+                <p className="text-sm text-[#64748b]">
+                  Tổng doanh thu: 14.850.000đ (+12% so với tuần trước)
+                </p>
+              </div>
+              <select
+                aria-label="Thời gian biểu đồ"
+                className="rounded-xl border border-[#e2e8f0] px-3 py-2 text-sm outline-none focus:border-[#fcd34d]">
+                <option>Tuần này</option>
+                <option>Tháng này</option>
+                <option>Năm nay</option>
+              </select>
+            </div>
+            <div className="flex h-64 items-end gap-3 pt-8">
               {[
-                { day: "T2", value: 65 },
-                { day: "T3", value: 45 },
-                { day: "T4", value: 80 },
-                { day: "T5", value: 55 },
-                { day: "T6", value: 90 },
-                { day: "T7", value: 70 },
-                { day: "CN", value: 75 },
+                { day: "T2", value: 45 },
+                { day: "T3", value: 65 },
+                { day: "T4", value: 50 },
+                { day: "T5", value: 85 },
+                { day: "T6", value: 70 },
+                { day: "T7", value: 95 },
+                { day: "CN", value: 60 },
               ].map((item) => (
-                <div key={item.day} className="flex flex-1 flex-col items-center">
+                <div
+                  key={item.day}
+                  className="flex flex-1 flex-col items-center">
                   <div
                     className="w-full cursor-pointer rounded-t-lg bg-[#fcd34d] transition-colors hover:bg-[#0f172a]"
                     style={{ height: `${item.value}%` }}
@@ -261,39 +294,106 @@ const ShopDashboardPage = () => {
           </article>
 
           <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-            <article className="rounded-2xl border border-[#e2e8f0] bg-white p-6">
-              <h2 className="mb-6 text-xl font-bold text-[#0f172a]">
-                Đơn hàng gần đây
-              </h2>
+            {/* Real Recent Orders */}
+            <article className="rounded-2xl border border-[#e2e8f0] bg-white p-6 shadow-sm">
+              <div className="mb-6 flex items-center justify-between">
+                <h2 className="text-xl font-bold text-[#0f172a]">
+                  Đơn hàng gần đây
+                </h2>
+                <Link
+                  to="/shop/orders"
+                  className="text-xs font-semibold text-blue-600 hover:underline">
+                  Xem tất cả
+                </Link>
+              </div>
               <div className="space-y-4">
-                {recentOrders.map((order) => (
-                  <div
-                    key={order.id}
-                    className="flex items-center justify-between rounded-xl border border-[#e2e8f0] p-4 transition-colors hover:border-[#fcd34d]">
-                    <div className="min-w-0 flex-1">
-                      <p className="mb-1 font-bold text-[#0f172a]">{order.id}</p>
-                      <p className="mb-1 text-sm text-[#64748b]">
-                        {order.customer} • {order.product}
-                      </p>
-                      <p className="text-sm text-[#64748b]">{order.date}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="mb-2 font-bold text-[#0f172a]">
-                        {formatPrice(order.amount)}
-                      </p>
-                      <span
-                        className={`inline-block rounded-full px-3 py-1 text-xs font-medium ${
-                          order.status === "Chờ xử lý"
-                            ? "bg-[#fde68a] text-[#0f172a]"
-                            : order.status === "Đang giao"
-                              ? "bg-blue-100 text-blue-700"
-                              : "bg-green-100 text-green-700"
-                        }`}>
-                        {order.status}
-                      </span>
-                    </div>
-                  </div>
-                ))}
+                {isOrdersLoading ? (
+                  <p className="py-8 text-center text-sm text-[#64748b]">
+                    Đang tải đơn hàng...
+                  </p>
+                ) : recentRealOrders.length > 0 ? (
+                  recentRealOrders.map((order) => {
+                    const status = order.status as OrderStatus;
+                    const shippingAddr = (() => {
+                      try {
+                        return JSON.parse(order.shipping_address);
+                      } catch {
+                        return null;
+                      }
+                    })();
+                    const customerName =
+                      shippingAddr?.name ||
+                      order.user?.full_name ||
+                      "Khách hàng";
+                    const firstProduct =
+                      order.items[0]?.product?.name || "Sản phẩm";
+                    const extra =
+                      order.items.length > 1
+                        ? ` (+${order.items.length - 1})`
+                        : "";
+
+                    return (
+                      <div
+                        key={order.id}
+                        className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#e2e8f0] p-4 transition-colors hover:border-[#fcd34d]">
+                        <div className="min-w-0 flex-1">
+                          <p className="mb-0.5 font-mono text-sm font-bold text-[#0f172a]">
+                            #{order.id.slice(0, 8).toUpperCase()}
+                          </p>
+                          <p className="truncate text-xs font-medium text-[#64748b]">
+                            {customerName} • {firstProduct}
+                            {extra}
+                          </p>
+                          <p className="mt-0.5 text-xs text-[#94a3b8]">
+                            {formatDate(order.created_at)}
+                          </p>
+                        </div>
+                        <div className="flex flex-col items-end gap-1.5 text-right">
+                          <p className="font-bold text-[#0f172a]">
+                            {formatPrice(order.total_amount)}
+                          </p>
+                          <div className="flex items-center gap-1.5">
+                            <span
+                              className={`inline-block rounded-full px-2.5 py-0.5 text-[11px] font-medium ${
+                                status === "pending"
+                                  ? "bg-amber-100 text-amber-800"
+                                  : status === "confirmed"
+                                    ? "bg-blue-100 text-blue-800"
+                                    : status === "shipping"
+                                      ? "bg-indigo-100 text-indigo-800"
+                                      : status === "delivered"
+                                        ? "bg-green-100 text-green-800"
+                                        : "bg-rose-100 text-rose-800"
+                              }`}>
+                              {status === "pending"
+                                ? "Chờ xử lý"
+                                : status === "confirmed"
+                                  ? "Đã xác nhận"
+                                  : status === "shipping"
+                                    ? "Đang giao"
+                                    : status === "delivered"
+                                      ? "Hoàn thành"
+                                      : "Đã hủy"}
+                            </span>
+                            {status === "pending" && (
+                              <button
+                                type="button"
+                                disabled={confirmingId === order.id}
+                                onClick={() => handleQuickConfirm(order.id)}
+                                className="rounded-full bg-blue-600 px-3 py-0.5 text-[11px] font-semibold text-white shadow-sm hover:bg-blue-700 disabled:opacity-50">
+                                {confirmingId === order.id ? "..." : "Duyệt"}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <p className="py-8 text-center text-sm text-[#64748b]">
+                    Chưa có đơn hàng nào gần đây.
+                  </p>
+                )}
               </div>
             </article>
 
@@ -340,11 +440,6 @@ const ShopDashboardPage = () => {
                     key={`${action.to}-${action.label}`}
                     to={action.to}
                     className="group relative flex flex-col items-center gap-3 rounded-xl border border-[#e2e8f0] p-4 transition-colors hover:border-[#fcd34d] hover:bg-[#fff7ed]">
-                    {action.badge ? (
-                      <span className="absolute -right-2 -top-2 rounded-full bg-red-500 px-2 py-1 text-xs font-bold text-white">
-                        {action.badge}
-                      </span>
-                    ) : null}
                     <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#fff7ed] transition-colors group-hover:bg-[#fcd34d]">
                       <Icon className="h-6 w-6 text-[#0f172a]" />
                     </div>
@@ -363,36 +458,24 @@ const ShopDashboardPage = () => {
               <button
                 type="button"
                 className="text-sm font-medium text-[#0f172a] hover:text-[#334155]">
-                Xem tất cả
+                Đánh dấu đã đọc
               </button>
             </div>
-            <div className="space-y-3">
-              {notifications.map((notification) => {
-                const Icon = notification.icon;
+            <div className="space-y-4">
+              {notifications.map((item, idx) => {
+                const Icon = item.icon;
                 return (
                   <div
-                    key={notification.title}
-                    className={`rounded-xl border p-4 ${notification.tone}`}>
-                    <div className="flex gap-3">
-                      <Icon className="mt-0.5 h-5 w-5 flex-shrink-0" />
-                      <div className="min-w-0 flex-1">
-                        <div className="mb-1 flex items-start justify-between gap-2">
-                          <p className="font-bold text-[#0f172a]">
-                            {notification.title}
-                          </p>
-                          <span className="flex-shrink-0 text-xs text-[#64748b]">
-                            {notification.time}
-                          </span>
-                        </div>
-                        <p className="mb-2 text-sm text-[#64748b]">
-                          {notification.message}
-                        </p>
-                        <button
-                          type="button"
-                          className="text-sm font-medium text-[#0f172a] hover:underline">
-                          {notification.action}
-                        </button>
-                      </div>
+                    key={`${item.title}-${idx}`}
+                    className="flex items-start gap-4 rounded-xl border border-[#e2e8f0] p-4 transition-colors hover:border-[#fcd34d]">
+                    <div
+                      className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg border ${item.tone}`}>
+                      <Icon className="h-5 w-5" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-bold text-[#0f172a]">{item.title}</p>
+                      <p className="text-sm text-[#64748b]">{item.message}</p>
+                      <p className="mt-1 text-xs text-[#94a3b8]">{item.time}</p>
                     </div>
                   </div>
                 );
@@ -405,6 +488,7 @@ const ShopDashboardPage = () => {
       <AddProductModal
         isOpen={isAddProductModalOpen}
         onClose={() => setIsAddProductModalOpen(false)}
+        onSuccess={() => {}}
       />
     </SellerWorkspaceLayout>
   );
