@@ -5,6 +5,7 @@ import { authenticate } from '../../middleware/authicate';
 const reviewRoute: Router = Router();
 
 reviewRoute.post('/create-review', authenticate, createReviewController);
-reviewRoute.get('/review/:productId', getReviewsByProductIdController);
+reviewRoute.post('/create', authenticate, createReviewController);
+reviewRoute.get('/:productId', getReviewsByProductIdController);
 
 export default reviewRoute;

@@ -47,13 +47,14 @@ export const getReviewsByProductId = async (productId: string, query: GetProduct
     if (!productId) {
         throw new AppError('Product ID là bắt buộc', 400, 'PRODUCT_ID_REQUIRED');
     }
-    const page = Math.max(1, query.page || 1);
-    const limit = Math.max(1, query.limit || 10);
+    const page = Math.max(1, Number(query.page) || 1);
+    const limit = Math.max(1, Number(query.limit) || 10);
     const skip = (page - 1) * limit;
 
     const where: any = { product_id: productId };
-    if (query.rating && Number.isInteger(query.rating) && query.rating >= 1 && query.rating <= 5) {
-        where.rating = query.rating;
+    const ratingFilter = query.rating ? Number(query.rating) : undefined;
+    if (ratingFilter && Number.isInteger(ratingFilter) && ratingFilter >= 1 && ratingFilter <= 5) {
+        where.rating = ratingFilter;
     }
     const [reviews, filterTotal, ratingGroup] = await Promise.all([
         prisma.review.findMany({
@@ -93,7 +94,7 @@ export const getReviewsByProductId = async (productId: string, query: GetProduct
     const averageRating = totalReviews > 0 ? Number((totalRating / totalReviews).toFixed(1)) : 0;
 
     return {
-        sumary: {
+        summary: {
             totalReviews,
             averageRating,
             breakdown,

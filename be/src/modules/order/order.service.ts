@@ -238,3 +238,182 @@ export const getMyOrders = async (
         },
     };
 };
+
+
+export const updateOrderStatus = async (orderId: string, status: string) => {
+    const order = await prisma.order.findUnique({
+        where: { id: orderId },
+        include: {
+            items: true,
+            payments: true,
+        },
+    });
+    if (!order) {
+        throw new AppError('Đơn hàng không tồn tại', 404, 'ORDER_NOT_FOUND');
+    }
+    if (order.status == status) {
+        return order;
+    }
+    if (order.status === 'cancelled' || order.status === 'delivered') {
+        throw new AppError(
+            'Đơn hàng đã bị hủy, không thể thay đổi trạng thái',
+            400,
+            'ORDER_ALREADY_CANCELLED',
+        );
+    }
+
+    return prisma.$transaction(async (tx) => {
+        if (status === 'cancelled') {
+            for (const item of order.items) {
+                await tx.product.update({
+                    where: { id: item.product_id },
+                    data: {
+                        stock_quantity: {
+                            increment: item.quantity,
+                        },
+                    },
+                });
+            }
+        }
+        if (status === 'delivered') {
+            await tx.payment.updateMany({
+                where: { order_id: orderId, status: 'pending' },
+                data: {
+                    status: 'completed',
+                    paid_at: new Date(),
+                },
+            });
+        }
+        const updatedOrder = await tx.order.update({
+            where: { id: orderId },
+            data: { status, ...(status === 'delivered' ? { payment_status: 'paid' } : {}) },
+            include: {
+                items: {
+                    include: {
+                        product: true,
+                    },
+                },
+                payments: true,
+            },
+        });
+        return updatedOrder;
+    });
+};
+
+export const confirmDelivery = async (orderId: string, userId: string) => {
+    const order = await prisma.order.findUnique({
+        where: { id: orderId },
+        include: {
+            payments: true,
+            items: {
+                include: {
+                    product: true,
+                },
+            },
+        },
+    });
+
+    if (!order) {
+        throw new AppError('Đơn hàng không tồn tại', 404, 'ORDER_NOT_FOUND');
+    }
+    if (order.user_id !== userId) {
+        throw new AppError('Bạn không có quyền xác nhận đơn hàng này', 403, 'FORBIDDEN');
+    }
+    if (order.status === 'delivered') {
+        throw new AppError('Đơn hàng đã được xác nhận', 400, 'ORDER_ALREADY_CONFIRMED');
+    }
+    if (order.status === 'cancelled') {
+        throw new AppError(
+            'Đơn hàng đã bị hủy, không thể xác nhận',
+            400,
+            'ORDER_ALREADY_CANCELLED',
+        );
+    }
+    if (order.status !== 'shipping' && order.status !== 'paid') {
+        throw new AppError(
+            'Đơn hàng chưa ở trạng thái đang giao hàng, bạn chưa thể xác nhận nhận hàng lúc này.',
+            400,
+            'ORDER_NOT_IN_DELIVERY',
+        );
+    }
+    const hasPendingCod = order.payments.some(
+        (p) => p.payment_method === 'cod' && p.status === 'pending',
+    );
+    return prisma.$transaction(async (tx) => {
+        if (hasPendingCod) {
+            await tx.payment.updateMany({
+                where: { order_id: orderId, payment_method: 'cod', status: 'pending' },
+                data: {
+                    status: 'completed',
+                    paid_at: new Date(),
+                },
+            });
+        }
+        const updatedOrder = await tx.order.update({
+            where: { id: orderId },
+            data: { status: 'delivered', payment_status: 'paid' },
+            include: {
+                items: {
+                    include: {
+                        product: true,
+                    },
+                },
+                payments: true,
+            },
+        });
+        return updatedOrder;
+    });
+};
+
+export const getShopOrders = async (page: number = 1, limit: number = 10, status?: string) => {
+    const pageNumber = Math.max(1, page);
+    const limitNumber = Math.max(1, limit);
+    const skip = (pageNumber - 1) * limitNumber;
+
+    const where: Record<string, unknown> = {};
+    if (status) where.status = status;
+    const [orders, total] = await Promise.all([
+        prisma.order.findMany({
+            where,
+            skip,
+            take: limitNumber,
+            orderBy: { created_at: 'desc' },
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        full_name: true,
+                        email: true,
+                        phone_number: true,
+                    },
+                },
+                items: {
+                    include: {
+                        product: {
+                            select: {
+                                id: true,
+                                name: true,
+                                image_url: true,
+                                base_price: true,
+                            },
+                        },
+                    },
+                },
+                payments: {
+                    orderBy: { created_at: 'desc' },
+                },
+            },
+        }),
+        prisma.order.count({ where }),
+    ]);
+
+    return {
+        orders,
+        pagination: {
+            total,
+            page: pageNumber,
+            limit: limitNumber,
+            totalPages: Math.ceil(total / limitNumber),
+        },
+    };
+};

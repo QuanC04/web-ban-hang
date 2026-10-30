@@ -17,6 +17,7 @@ import cartRouter from './modules/cart/cart.route';
 import orderRouter from './modules/order/order.route';
 import couponRouter from './modules/coupon/coupon.route';
 import messageRouter from './modules/message/message.route';
+import reviewRoute from './modules/review/review.route';
 
 const app: Application = express();
 
@@ -62,6 +63,7 @@ app.use('/api/cart', cartRouter);
 app.use('/api/order', orderRouter);
 app.use('/api/coupon', couponRouter);
 app.use('/api/message', messageRouter);
+app.use('/api/review', reviewRoute);
 app.get('/ping', (req, res) => res.send('pong'));
 
 // ==================== ERROR HANDLER ====================
